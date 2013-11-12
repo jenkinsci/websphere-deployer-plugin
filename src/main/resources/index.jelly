@@ -1,0 +1,6 @@
+<!--
+  This view is used to render the installed plugins page.
+-->
+<div>
+  Deploys your EAR files automatically to IBM WebSphere Application Server
+</div>

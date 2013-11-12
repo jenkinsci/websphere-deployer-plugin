@@ -13,10 +13,10 @@
   -->
   <f:section title="WebSphere Deployer">
     <f:entry title="WebSphere Admin Client Library Path" field="adminClientPath">
-      <f:textbox />
+      Please the admin client library in the WEB-INF/lib folder or classpath of Jenkins
     </f:entry>
       <f:entry title="WebSphere Orb Client Library Path" field="orbClientPath" description="Required if Jenkins isn't running under an IBM JRE">
-        <f:textbox />
+          Please the orb client library in the WEB-INF/lib folder or classpath of Jenkins
       </f:entry>
   </f:section>
 </j:jelly>

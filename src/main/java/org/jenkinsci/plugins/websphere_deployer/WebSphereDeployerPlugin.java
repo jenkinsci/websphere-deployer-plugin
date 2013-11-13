@@ -159,15 +159,19 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
+
         if(build.getResult().equals(Result.SUCCESS)) {
             try {
                 if(!WebSphere.getInstance().isConnected()) {
                     listener.getLogger().println("Connecting to IBM WebSphere Application Server...");
                     getDescriptor().connectToWebSphere(getConnectorType(),getIpAddress(),getPort(),getUsername(),getPassword(),getClientKeyFile(),getClientKeyPassword(),getClientTrustFile(),getClientTrustPassword());
                     listener.getLogger().println("Connected!");
+                } else {
+                    listener.getLogger().println("Connected to IBM WebSphere Application Server!");
                 }
                 J2EEApplication application = WebSphere.getInstance().getApplication(getAppName());
                 if(application != null) {
+                    listener.getLogger().println("'"+getAppName()+"' Is Already Deployed To WebSphere");
                     if(application.isStarted()) {
                         listener.getLogger().println("Stopping Application '"+getAppName()+"'...");
                         WebSphere.getInstance().stopApplication(getAppName());
@@ -177,7 +181,10 @@ public class WebSphereDeployerPlugin extends Notifier {
                     WebSphere.getInstance().uninstallApplication(getAppName());
                     listener.getLogger().println("Application '"+getAppName()+"' Uninstalled.");
                 }
-                FilePath[] paths = build.getWorkspace().getParent().list("builds/lastSuccessfulBuild/"+getArtifacts());
+                FilePath[] paths = build.getWorkspace().sibling("lastSuccessful/").list(getArtifacts());
+                if(paths.length == 0) {
+                    listener.getLogger().println("No deployable artifacts found in path: "+build.getWorkspace().sibling("lastSuccessful/")+getArtifacts());
+                }
                 for(FilePath path:paths) {
                     listener.getLogger().println("Deploying '"+getAppName()+"' to IBM WebSphere Application Server");
                     Deployable deployable = new Deployable();
@@ -190,7 +197,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                     WebSphere.getInstance().installApplication(deployable);
                     listener.getLogger().println("Application Successfully Deployed.");
                     if(isAutoStart()) {
-                        listener.getLogger().println("Starting Application...");
+                        listener.getLogger().println("Starting Application '"+getAppName()+"'...");
                         WebSphere.getInstance().startApplication("MMA");
                         listener.getLogger().println("Application Started.");
                     }
@@ -212,24 +219,12 @@ public class WebSphereDeployerPlugin extends Notifier {
         return BuildStepMonitor.BUILD;
     }
 
-    /**
-     * Descriptor for {@link WebSphereDeployerPlugin}. Used as a singleton.
-     * The class is marked as public so that it can be accessed from views.
-     *
-     * <p>
-     * See <tt>src/main/resources/hudson/plugins/hello_world/WebSphereDeployerPlugin/*.jelly</tt>
-     * for the actual HTML fragment for the configuration screen.
-     */
     @Extension // This indicates to Jenkins that this is an implementation of an extension point.
     public static final class DescriptorImpl extends BuildStepDescriptor<Publisher> {
 
         private String adminClientPath;
         private String orbClientPath;
 
-        /**
-         * In order to load the persisted global configuration, you have to 
-         * call load() in the constructor.
-         */
         public DescriptorImpl() {
             load();
         }
@@ -244,6 +239,10 @@ public class WebSphereDeployerPlugin extends Notifier {
                                                @QueryParameter("clientKeyPassword")String clientKeyPassword,
                                                @QueryParameter("clientTrustPassword")String clientTrustPassword) throws IOException, ServletException {
             try {
+
+                if(!isWebSphereClassloaderAvailable()) {
+                    return FormValidation.warning("Cannot Find WebSphere Jar Libraries, Please Copy WebSphere Jar Libraries To Application Server's Classpath To Configure Jenkins. Note: Copying Jars To Jenkins WEB-INF/lib Will Not Work.");
+                }
                 if(!WebSphere.getInstance().isConnected()) {
                     connectToWebSphere(connectorType,ipAddress,port,username,password,clientKeyFile,clientKeyPassword,clientTrustFile,clientTrustPassword);
                     return FormValidation.ok("Connection Successful!");
@@ -278,23 +277,6 @@ public class WebSphereDeployerPlugin extends Notifier {
             WebSphere.getInstance().connect(endpoint);
         }
 
-        /**
-         * Performs on-the-fly validation of the form field 'name'.
-         *
-         * @param value
-         *      This parameter receives the value that the user has typed.
-         * @return
-         *      Indicates the outcome of the validation. This is sent to the browser.
-         */
-        public FormValidation doCheckName(@QueryParameter String value)
-                throws IOException, ServletException {
-            if (value.length() == 0)
-                return FormValidation.error("Please set a name");
-            if (value.length() < 4)
-                return FormValidation.warning("Isn't the name too short?");
-            return FormValidation.ok();
-        }
-
         public FormValidation doCheckPort(@QueryParameter String value)
                 throws IOException, ServletException {
             if (value.length() == 0)
@@ -320,38 +302,33 @@ public class WebSphereDeployerPlugin extends Notifier {
             return FormValidation.ok();
         }
 
+        public boolean isWebSphereClassloaderAvailable() {
+            try {
+                WebSphere.getInstance();
+                return true;
+            } catch(NoClassDefFoundError e) {
+                e.printStackTrace();
+            }
+            return false;
+        }
+
 
         public boolean isApplicable(Class<? extends AbstractProject> aClass) {
             return true;
         }
 
-        /**
-         * This human readable name is used in the configuration screen.
-         */
         public String getDisplayName() {
             return "Deploy To IBM WebSphere Application Server";
         }
 
         @Override
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
-            // To persist global configuration information,
-            // set that to properties and call save().
-
             adminClientPath = formData.getString("adminClientPath");
             orbClientPath = formData.getString("orbClientPath");
-
-            // ^Can also use req.bindJSON(this, formData);
-            //  (easier when there are many fields; need set* methods for this, like setUseFrench)
             save();
             return super.configure(req,formData);
         }
 
-        /**
-         * This method returns true if the global configuration says we should speak French.
-         *
-         * The method name is bit awkward because global.jelly calls this method to determine
-         * the initial state of the checkbox by the naming convention.
-         */
         public String getAdminClientPath() {
             return adminClientPath;
         }

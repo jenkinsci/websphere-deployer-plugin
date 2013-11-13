@@ -38,7 +38,7 @@
   </developers>
 
   <scm>
-    <connection>scm:git:ssh://github.com/jenkinsci/websphere-deployer.git</connection>
+    <connection>scm:git:ssh://github.com/jenkinsci/websphere-deployer-plugin.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/jenkinsci/websphere-deployer-plugin.git</developerConnection>
     <url>https://github.com/jenkinsci/websphere-deployer-plugin</url>
   </scm>

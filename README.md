@@ -6,8 +6,10 @@ of the existing WebSphere plugins do not work well moving forward.
 
 We will support
 
-1) Global Security
-2) WebSphere Liberty Profile
-3) WebSphere Application Server
-4) Different protocols
-5) Different platforms
+<ul>
+  <li>Global Security</li>
+  <li>WebSphere Liberty Profile</li>
+  <li>WebSphere Application Server</li>
+  <li>Different protocols</li>
+  <li>Different platforms</li>
+</ul>

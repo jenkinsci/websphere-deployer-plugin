@@ -11,10 +11,10 @@
   <packaging>hpi</packaging>
   <name>WebSphere Deployer Plugin</name>
   <inceptionYear>2013</inceptionYear>
-  <url>https://wiki.jenkins-ci.org/display/JENKINS/WebSphere+Deployer</url>
+  <url>https://wiki.jenkins-ci.org/display/JENKINS/WebSphere+Deployer+Plugin</url>
 
   <description>
-      A plugin for Jenkins for deploying to a remote instance of IBM WebSphere Application Server.
+      Deploys your EAR files automatically to a local or remote IBM WebSphere Application Server
   </description>
 
   <licenses>

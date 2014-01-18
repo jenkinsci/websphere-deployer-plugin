@@ -1,5 +1,6 @@
 package org.jenkinsci.plugins.websphere_deployer;
 
+import com.ibm.websphere.management.application.AppConstants;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
@@ -14,9 +15,8 @@ import hudson.tasks.Publisher;
 import hudson.util.FormValidation;
 import hudson.util.Scrambler;
 import net.sf.json.JSONObject;
-import org.jenkinsci.plugins.websphere_deployer.services.Deployable;
-import org.jenkinsci.plugins.websphere_deployer.services.Endpoint;
-import org.jenkinsci.plugins.websphere_deployer.services.J2EEApplication;
+import org.jenkinsci.plugins.websphere.services.deployment.Artifact;
+import org.jenkinsci.plugins.websphere.services.deployment.WebSphereDeploymentService;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -26,6 +26,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.HashMap;
 
 /**
  * A Jenkins plugin for deploying to WebSphere either locally or remotely.
@@ -47,7 +48,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final String artifacts;
     private final String clientKeyPassword;
     private final String clientTrustPassword;
-    private final String appName;
+    private final String earLevel;
     private final boolean autoStart;
     private final boolean precompile;
     private final boolean reloading;
@@ -66,7 +67,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    String server,
                                    String clientKeyPassword,
                                    String clientTrustPassword,
-                                   String appName,
+                                   String earLevel,
                                    boolean autoStart,
                                    boolean precompile,
                                    boolean reloading) {
@@ -84,9 +85,13 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.autoStart = autoStart;
         this.clientKeyPassword = Scrambler.scramble(clientKeyPassword);
         this.clientTrustPassword = Scrambler.scramble(clientTrustPassword);
-        this.appName = appName;
+        this.earLevel = earLevel;
         this.precompile = precompile;
         this.reloading = reloading;
+    }
+
+    public String getEarLevel() {
+        return earLevel;
     }
 
     public boolean isPrecompile() {
@@ -99,10 +104,6 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     public String getIpAddress() {
         return ipAddress;
-    }
-
-    public String getAppName() {
-        return appName;
     }
 
     public String getConnectorType() {
@@ -159,55 +160,123 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
-
         if(build.getResult().equals(Result.SUCCESS)) {
+            WebSphereDeploymentService service = new WebSphereDeploymentService();
             try {
-                if(!WebSphere.getInstance().isConnected()) {
-                    listener.getLogger().println("Connecting to IBM WebSphere Application Server...");
-                    getDescriptor().connectToWebSphere(getConnectorType(),getIpAddress(),getPort(),getUsername(),getPassword(),getClientKeyFile(),getClientKeyPassword(),getClientTrustFile(),getClientTrustPassword());
-                    listener.getLogger().println("Connected!");
-                } else {
-                    listener.getLogger().println("Connected to IBM WebSphere Application Server!");
-                }
-                J2EEApplication application = WebSphere.getInstance().getApplication(getAppName());
-                if(application != null) {
-                    listener.getLogger().println("'"+getAppName()+"' Is Already Deployed To WebSphere");
-                    if(application.isStarted()) {
-                        listener.getLogger().println("Stopping Application '"+getAppName()+"'...");
-                        WebSphere.getInstance().stopApplication(getAppName());
-                        listener.getLogger().println("Application '"+getAppName()+"' Stopped.");
-                    }
-                    listener.getLogger().println("Uninstalling Application '"+getAppName()+"'...");
-                    WebSphere.getInstance().uninstallApplication(getAppName());
-                    listener.getLogger().println("Application '"+getAppName()+"' Uninstalled.");
-                }
-                FilePath[] paths = build.getWorkspace().sibling("lastSuccessful/").list(getArtifacts());
-                if(paths.length == 0) {
-                    listener.getLogger().println("No deployable artifacts found in path: "+build.getWorkspace().sibling("lastSuccessful/")+getArtifacts());
-                }
-                for(FilePath path:paths) {
-                    listener.getLogger().println("Deploying '"+getAppName()+"' to IBM WebSphere Application Server");
-                    Deployable deployable = new Deployable();
-                    deployable.setEarPath(path.getRemote());
-                    deployable.setTargetServer(getServer());
-                    deployable.setTargetCell(getCell());
-                    deployable.setTargetNode(getNode());
-                    deployable.setServletReloadingEnabled(isReloading());
-                    deployable.setPrecompileJSPs(isPrecompile());
-                    WebSphere.getInstance().installApplication(deployable);
-                    listener.getLogger().println("Application Successfully Deployed.");
-                    if(isAutoStart()) {
-                        listener.getLogger().println("Starting Application '"+getAppName()+"'...");
-                        WebSphere.getInstance().startApplication("MMA");
-                        listener.getLogger().println("Application Started.");
-                    }
+                connect(listener, service);
+                for(FilePath path:gatherArtifactPaths(build, listener)) {
+                    Artifact artifact = createArtifact(path,listener,service);
+                    stopArtifact(artifact.getAppName(),listener,service);
+                    uninstallArtifact(artifact.getAppName(),listener,service);
+                    deployArtifact(artifact,listener,service);
+                    startArtifact(artifact.getAppName(),listener,service);
                 }
             } catch (Exception e) {
-                listener.getLogger().println("Error deploying to IBM WebSphere Application Server: "+e.getMessage());
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                e.printStackTrace();
+                PrintStream p = new PrintStream(out);
+                e.printStackTrace(p);
+                listener.getLogger().println("Error deploying to IBM WebSphere Application Server: "+new String(out.toByteArray()));
                 build.setResult(Result.FAILURE);
+            } finally {
+                service.disconnect();
             }
         }
         return true;
+    }
+
+    private void deployArtifact(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) throws Exception {
+        listener.getLogger().println("Deploying New '"+artifact.getAppName()+"' to IBM WebSphere Application Server");
+        HashMap<String,Object> options = new HashMap<String, Object>();
+        options.put(AppConstants.APPDEPL_JSP_RELOADENABLED,isReloading());
+        options.put(AppConstants.APPDEPL_PRECOMPILE_JSP,isPrecompile());
+        service.installArtifact(artifact, options);
+    }
+
+    private void uninstallArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
+        if(service.isArtifactInstalled(appName)) {
+            listener.getLogger().println("Uninstalling Old Application '"+appName+"'...");
+            service.uninstallArtifact(appName);
+        }
+    }
+
+    private void startArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
+        if(isAutoStart()) {
+            listener.getLogger().println("Starting New Application '"+appName+"'...");
+            service.startArtifact(appName);
+        }
+    }
+
+    private void stopArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
+        if(service.isArtifactInstalled(appName)) {
+            listener.getLogger().println("Stopping Old Application '"+appName+"'...");
+            service.stopArtifact(appName);
+        }
+    }
+
+    private Artifact createArtifact(FilePath path,BuildListener listener,WebSphereDeploymentService service) {
+        Artifact artifact = new Artifact();
+        if(path.getRemote().endsWith(".ear")) {
+            artifact.setType(Artifact.TYPE_EAR);
+        } else if(path.getRemote().endsWith(".war")) {
+            artifact.setType(Artifact.TYPE_WAR);
+        }
+        artifact.setPrecompile(isPrecompile());
+        artifact.setSourcePath(new File(path.getRemote()));
+        artifact.setAppName(getAppName(artifact,service));
+        if(artifact.getType() == Artifact.TYPE_WAR) {
+            generateEAR(artifact,listener,service);
+        }
+        return artifact;
+    }
+
+    private FilePath[] gatherArtifactPaths(AbstractBuild build,BuildListener listener) throws Exception {
+        FilePath[] paths = build.getWorkspace().getParent().list(getArtifacts());
+        if(paths.length == 0) {
+            listener.getLogger().println("No deployable artifacts found in path: "+build.getWorkspace().getParent()+File.separator+getArtifacts());
+            throw new Exception("No deployable artifacts found!");
+        } else {
+            listener.getLogger().println("The following artifacts will be deployed in this order...");
+            listener.getLogger().println("-------------------------------------------");
+            for(FilePath path:paths) {
+                listener.getLogger().println(path.getName());
+            }
+            listener.getLogger().println("-------------------------------------------");
+        }
+        return paths;
+    }
+
+    private void connect(BuildListener listener,WebSphereDeploymentService service) throws Exception {
+        listener.getLogger().println("Connecting to IBM WebSphere Application Server...");
+        service.setConnectorType(getConnectorType());
+        service.setHost(getIpAddress());
+        service.setPort(getPort());
+        service.setUsername(getUsername());
+        service.setPassword(getPassword());
+        service.setKeyStoreLocation(new File(getClientKeyFile()));
+        service.setKeyStorePassword(getClientKeyPassword());
+        service.setTrustStoreLocation(new File(getClientTrustFile()));
+        service.setTrustStorePassword(getClientTrustPassword());
+        service.setTargetCell(getCell());
+        service.setTargetNode(getNode());
+        service.setTargetServer(getServer());
+        service.connect();
+    }
+
+    private String getAppName(Artifact artifact,WebSphereDeploymentService service) {
+        if(artifact.getType() == Artifact.TYPE_EAR) {
+            return service.getAppName(artifact.getSourcePath().getAbsolutePath());
+        } else {
+            String filename = artifact.getSourcePath().getName();
+            return filename.substring(0,filename.lastIndexOf("."));
+        }
+    }
+
+    private void generateEAR(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) {
+        listener.getLogger().println("Generating EAR For New Artifact: "+artifact.getAppName());
+        File modified = new File(artifact.getSourcePath().getParent(),artifact.getAppName()+".ear");
+        service.generateEAR(artifact, modified, getEarLevel());
+        artifact.setSourcePath(modified);
     }
 
     @Override
@@ -219,7 +288,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         return BuildStepMonitor.BUILD;
     }
 
-    @Extension // This indicates to Jenkins that this is an implementation of an extension point.
+    @Extension
     public static final class DescriptorImpl extends BuildStepDescriptor<Publisher> {
 
         private String adminClientPath;
@@ -238,43 +307,31 @@ public class WebSphereDeployerPlugin extends Notifier {
                                                @QueryParameter("clientTrustFile")String clientTrustFile,
                                                @QueryParameter("clientKeyPassword")String clientKeyPassword,
                                                @QueryParameter("clientTrustPassword")String clientTrustPassword) throws IOException, ServletException {
+            WebSphereDeploymentService service = new WebSphereDeploymentService();
             try {
-
-                if(!isWebSphereClassloaderAvailable()) {
-                    return FormValidation.warning("Cannot Find WebSphere Jar Libraries, Please Copy WebSphere Jar Libraries To Application Server's Classpath To Configure Jenkins. Note: Copying Jars To Jenkins WEB-INF/lib Will Not Work.");
+                if(!service.isAvailable()) {
+                    String destination = System.getProperty("user.home")+File.separator+".jenkins"+File.separator+"plugins"+File.separator+"websphere-deployer"+File.separator+"WEB-INF"+File.separator+"lib"+File.separator;
+                    return FormValidation.warning("Cannot find the required IBM WebSphere Application Server jar files in '"+destination+"'. Please copy them from IBM WebSphere Application Server (see plugin documentation)");
                 }
-                if(!WebSphere.getInstance().isConnected()) {
-                    connectToWebSphere(connectorType,ipAddress,port,username,password,clientKeyFile,clientKeyPassword,clientTrustFile,clientTrustPassword);
-                    return FormValidation.ok("Connection Successful!");
-                } else {
-                    return FormValidation.ok("Already connected!");
-                }
+                service.setConnectorType(connectorType);
+                service.setHost(ipAddress);
+                service.setPort(port);
+                service.setUsername(username);
+                service.setPassword(password);
+                service.setKeyStoreLocation(new File(clientKeyFile));
+                service.setKeyStorePassword(clientKeyPassword);
+                service.setTrustStoreLocation(new File(clientTrustFile));
+                service.setTrustStorePassword(clientTrustPassword);
+                service.connect();
+                return FormValidation.ok("Connection Successful!");
             } catch (Exception e) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
                 PrintStream p = new PrintStream(out);
                 e.printStackTrace(p);
                 return FormValidation.error("Connection failed: " + new String(out.toByteArray()));
+            } finally {
+                service.disconnect();
             }
-        }
-
-        public void connectToWebSphere(String connectorType,String ipAddress,String port,String username,String password,String clientKeyFile,String clientKeyPassword,String clientTrustFile,String clientTrustPassword) throws Exception {
-            Endpoint endpoint = new Endpoint();
-            endpoint.setConnectionType(connectorType);
-            endpoint.setPort(port);
-            endpoint.setUsername(username);
-            endpoint.setPassword(password);
-            endpoint.setHost(ipAddress);
-            if(username != null && !username.trim().equals("") && !new File(clientKeyFile).exists()) {
-                throw new Exception("The path to the client keystore file is incorrect, file was not found");
-            }
-            endpoint.setClientKeyFile(clientKeyFile);
-            endpoint.setClientKeyPassword(clientKeyPassword);
-            if(username != null && !username.trim().equals("") && !new File(clientTrustFile).exists()) {
-                throw new Exception(("The path to the client truststore file is incorrect, file was not found"));
-            }
-            endpoint.setClientTrustFile(clientTrustFile);
-            endpoint.setClientTrustPassword(clientTrustPassword);
-            WebSphere.getInstance().connect(endpoint);
         }
 
         public FormValidation doCheckPort(@QueryParameter String value)
@@ -301,17 +358,6 @@ public class WebSphereDeployerPlugin extends Notifier {
             }
             return FormValidation.ok();
         }
-
-        public boolean isWebSphereClassloaderAvailable() {
-            try {
-                WebSphere.getInstance();
-                return true;
-            } catch(NoClassDefFoundError e) {
-                e.printStackTrace();
-            }
-            return false;
-        }
-
 
         public boolean isApplicable(Class<? extends AbstractProject> aClass) {
             return true;

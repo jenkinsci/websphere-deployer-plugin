@@ -1,3 +1,6 @@
 <div>
-  Specify the EAR file you want deployed. (i.e. **/myapp.ear) This will deploy the last successful EAR build to WebSphere. Always use '**/' to preface your EAR location.
+  Specify the artifact you want deployed to IBM WebSphere Liberty Profile. This path is relative to the job that's
+    executing under Jenkins(for deploying a specific module use "modules/[module name]/**/lastSuccessful/**/*.war" or use
+    "modules/**/lastSuccessful/**/*.ear" to deploy all ears associated with the current job). Any
+    artifact that WebSphere Liberty Profile supports can be deployed from this Jenkins plugin.
 </div>

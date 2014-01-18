@@ -10,7 +10,7 @@
             </select>
         </f:entry>
       <f:entry title="Port" field="port">
-        <f:textbox value="8880"/>
+        <f:textbox/>
       </f:entry>
   </f:section>
     <f:section title="WebSphere Authentication (if required)">
@@ -40,9 +40,6 @@
           <f:entry title="EAR Path" field="artifacts">
             <f:textbox />
           </f:entry>
-          <f:entry title="App Name" field="appName">
-            <f:textbox />
-          </f:entry>
           <f:entry title="Target Node" field="node">
             <f:textbox />
           </f:entry>
@@ -52,13 +49,26 @@
           <f:entry title="Target Server" field="server">
             <f:textbox />
           </f:entry>
+          <f:entry title="Generated EAR Level" field="earLevel">
+            <select name="earLevel">
+                <option value="5">Java EE 5</option>
+                <j:choose>
+                    <j:when test="${instance.earLevel == '6'}">
+                        <option value="6" selected="selected">Java EE 6</option>
+                    </j:when>
+                    <j:otherwise>
+                        <option value="6">Java EE 6</option>
+                    </j:otherwise>
+                </j:choose>
+            </select>
+          </f:entry>
           <f:entry title="Start Application" field="autoStart">
             <f:checkbox checked="${instance.autoStart}" default="true"/>
           </f:entry>
           <f:entry title="Precompile JSPs" field="precompile">
             <f:checkbox checked="${instance.precompile}" default="true"/>
           </f:entry>
-          <f:entry title="Enable Reloading" field="reloading">
+          <f:entry title="JSP Reloading" field="reloading">
             <f:checkbox checked="${instance.reloading}" default="true"/>
           </f:entry>
     </f:section>

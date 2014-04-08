@@ -49,6 +49,9 @@
           <f:entry title="Target Server" field="server">
             <f:textbox />
           </f:entry>
+          <f:entry title="Deployment Timeout (minutes)" field="deploymentTimeout">
+            <f:textbox />
+          </f:entry>       
           <f:entry title="Generated EAR Level" field="earLevel">
             <select name="earLevel">
                 <option value="5">Java EE 5</option>

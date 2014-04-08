@@ -1,22 +1,35 @@
 package org.jenkinsci.plugins.websphere.services.deployment;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Locale;
+import java.util.Properties;
+import java.util.Set;
+import java.util.logging.Logger;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+import javax.management.MalformedObjectNameException;
+import javax.management.NotificationFilterSupport;
+import javax.management.ObjectName;
+
+import org.apache.commons.lang.StringUtils;
+
 import com.ibm.websphere.management.AdminClient;
 import com.ibm.websphere.management.AdminClientFactory;
 import com.ibm.websphere.management.application.AppConstants;
+import com.ibm.websphere.management.application.AppManagement;
 import com.ibm.websphere.management.application.AppManagementProxy;
 import com.ibm.websphere.management.application.AppNotification;
 import com.ibm.websphere.management.application.client.AppDeploymentController;
 import com.ibm.websphere.management.application.client.AppDeploymentTask;
 import com.ibm.websphere.management.exception.ConnectorException;
-import org.apache.commons.lang.StringUtils;
-
-import javax.management.*;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.util.*;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 /**
  * @author Greg Peters
@@ -24,6 +37,8 @@ import java.util.zip.ZipOutputStream;
 public class WebSphereDeploymentService extends AbstractDeploymentService {
 
     public static final String CONNECTOR_TYPE_SOAP = "SOAP";
+    private static final String className = WebSphereDeploymentService.class.getName();
+    private static Logger log = Logger.getLogger(className);
 
     private AdminClient client;
     private String connectorType;
@@ -138,52 +153,107 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             }
 
             AppDeploymentController controller = AppDeploymentController.readArchive(artifact.getSourcePath().getAbsolutePath(), preferences);
-
-            AppDeploymentTask task = controller.getFirstTask();
-            while (task != null) {
-                String[][] data = task.getTaskData();
-                task.setTaskData(data);
-                task = controller.getNextTask();
+            
+            String[] validationResult = controller.validate();
+            if (validationResult != null && validationResult.length > 0) {
+               throw new DeploymentServiceException("Unable to complete all task data for deployment preparation. Reason: " + Arrays.toString(validationResult));
             }
+
             controller.saveAndClose();
 
-            Hashtable<String,Object> config = controller.getAppDeploymentSavedResults();
-
-            artifact.setAppName((String)config.get(AppConstants.APPDEPL_APPNAME));
-            config.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
-            config.put(AppConstants.APPDEPL_ARCHIVE_UPLOAD, Boolean.TRUE);
-            config.put(AppConstants.APPDEPL_PRECOMPILE_JSP, artifact.isPrecompile());
+            preferences.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
+            preferences.put(AppConstants.APPDEPL_ARCHIVE_UPLOAD, Boolean.TRUE);
+            preferences.put(AppConstants.APPDEPL_PRECOMPILE_JSP, artifact.isPrecompile());
 
             Hashtable<String,Object> module2server = new Hashtable<String,Object>();
             module2server.put("*", getTarget());
-            config.put(AppConstants.APPDEPL_MODULE_TO_SERVER, module2server);
+            preferences.put(AppConstants.APPDEPL_MODULE_TO_SERVER, module2server);
+            
+            AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
+            
+            appManagementProxy.installApplication(artifact.getSourcePath().getAbsolutePath(),artifact.getAppName(),preferences, null);
+            
+            NotificationFilterSupport filterSupport = createFilterSupport();
+            DeploymentNotificationListener listener = new DeploymentNotificationListener(getAdminClient(), 
+                     filterSupport, "Install " + artifact.getAppName(),AppNotification.INSTALL);            
+            
+            synchronized(listener) 
+            {
+               listener.wait();
+            }
 
-            InstallationListener listener = createInstallationListener();
-            getAdminClient().addNotificationListener(listener.getAppManagement(), listener, listener.getFilter(), "");
-            AppManagementProxy.getJMXProxyForClient(client).installApplication(artifact.getSourcePath().getAbsolutePath(), config, null);
-            waitForInstallThread();
+            if(!listener.isSuccessful())
+               throw new IllegalStateException("Application not sucessfully deployed: " + listener.getMessage());            
+            
         } catch (Exception e) {
             e.printStackTrace();
             throw new DeploymentServiceException("Failed to install artifact: "+e.getMessage());
         }
     }
 
-    public void uninstallArtifact(String name) throws Exception {
-        InstallationListener listener = createInstallationListener();
+    public void uninstallArtifact(String appName) throws Exception {
+    	try {
+			Hashtable<Object, Object> prefs = new Hashtable<Object, Object>();
+			NotificationFilterSupport filterSupport = createFilterSupport();
+			
+			DeploymentNotificationListener listener = new DeploymentNotificationListener(getAdminClient(),filterSupport,"Uninstall " + appName, AppNotification.UNINSTALL);        
 
-        getAdminClient().addNotificationListener(listener.getAppManagement(), listener, listener.getFilter(), "");
-
-        AppManagementProxy.getJMXProxyForClient(getAdminClient()).uninstallApplication(name, new Hashtable(), null);
-
-        waitForInstallThread();
+			AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
+			
+			appManagementProxy.uninstallApplication(appName,prefs,null);
+			
+			synchronized(listener) 
+			{
+			   listener.wait();
+			}
+			if(!listener.isSuccessful()){
+			   throw new IllegalStateException("Application not sucessfully undeployed: " + listener.getMessage());
+			}
+		} catch (Exception e) {
+			throw new DeploymentServiceException("Could not undeploy application", e);
+		}
     }
 
-    public void startArtifact(String name) throws Exception {
+    public void startArtifact(String appName) throws Exception {
+    	startArtifact(appName, 5);
+    }
+    
+    public void startArtifact(String appName, int deploymentTimeout) throws Exception {
         try {
-            AppManagementProxy.getJMXProxyForClient(getAdminClient()).startApplication(name, new Hashtable(), null);
+        	NotificationFilterSupport filterSupport = createFilterSupport();
+        	AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
+            DeploymentNotificationListener distributionListener = null;
+            int checkCount = 0;
+            
+            int secsToWait = deploymentTimeout * 60;
+            
+            while (checkDistributionStatus(distributionListener) != AppNotification.DISTRIBUTION_DONE
+                  && ++checkCount < secsToWait)
+            {
+               Thread.sleep(1000);
+               
+               distributionListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, null, AppNotification.DISTRIBUTION_STATUS_NODE);
+               
+               synchronized(distributionListener)
+               {
+                  appManagementProxy.getDistributionStatus(appName, new Hashtable<Object, Object>(), null);
+                  distributionListener.wait();
+               }
+            }
+
+            if (checkCount <= secsToWait)
+            {
+               String targetsStarted = appManagementProxy.startApplication(appName, null, null);
+               log.info("Application was started on the following targets: " + targetsStarted);
+               if (targetsStarted == null)
+                  throw new IllegalStateException("Start of the application was not successful. WAS JVM logs should contain the detailed error message.");
+            } else {
+               throw new IllegalStateException("Distribution of application did not succeed to all nodes.");
+            }        	
+            AppManagementProxy.getJMXProxyForClient(getAdminClient()).startApplication(appName, new Hashtable(), null);
         } catch(Exception e) {
             e.printStackTrace();
-            throw new DeploymentServiceException("Could not start artifact '"+name+"': "+e.getMessage());
+            throw new DeploymentServiceException("Could not start artifact '"+appName+"': "+e.toString());
         }
     }
 
@@ -205,10 +275,10 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         }
     }
 
-    private InstallationListener createInstallationListener() throws Exception {
-        NotificationFilterSupport filter = new NotificationFilterSupport();
-        filter.enableType(AppConstants.NotificationType);
-        return new InstallationListener(getAdminClient(),getAppManagementObject(),filter);
+    private NotificationFilterSupport createFilterSupport(){
+        NotificationFilterSupport filterSupport = new NotificationFilterSupport();
+        filterSupport.enableType(AppConstants.NotificationType);
+        return filterSupport;
     }
 
     public boolean isConnected() {
@@ -248,12 +318,6 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         } catch(Throwable e) {
             return false;
         }
-    }
-
-    private ObjectName getAppManagementObject() throws MalformedObjectNameException, ConnectorException {
-        //only one app management object exists for WebSphere so return the first one
-        Iterator iterator = getAdminClient().queryNames(new ObjectName("WebSphere:type=AppManagement,*"), null).iterator();
-        return (ObjectName)iterator.next();
     }
 
     private AdminClient getAdminClient() throws ConnectorException {
@@ -346,66 +410,45 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         this.targetCell = targetCell;
     }
 
-    private void waitForInstallThread() {
-        synchronized (this) {
-            try {
-                wait();
-            } catch (Exception e) {
-                e.printStackTrace();
+    /*
+     * Checks the listener and figures out the aggregate distribution status of all nodes
+     */
+    private String checkDistributionStatus(DeploymentNotificationListener listener) throws MalformedObjectNameException, NullPointerException, IllegalStateException {
+       String distributionState = AppNotification.DISTRIBUTION_UNKNOWN;
+       if (listener != null)
+       {
+         String compositeStatus = listener.getNotificationProps()
+            .getProperty(AppNotification.DISTRIBUTION_STATUS_COMPOSITE);
+         if (compositeStatus != null)
+         {
+            log.finer("compositeStatus: " + compositeStatus);
+            String[] serverStati = compositeStatus.split("\\+");
+            int countTrue = 0, countFalse = 0, countUnknown = 0;
+            for (String serverStatus : serverStati)
+            {
+               ObjectName objectName = new ObjectName(serverStatus);
+               distributionState = objectName.getKeyProperty("distribution");
+               log.finer("distributionState: " + distributionState);
+               if (distributionState.equals("true"))
+                  countTrue++;
+               if (distributionState.equals("false"))
+                  countFalse++;
+               if (distributionState.equals("unknown"))
+                  countUnknown++;
             }
-        }
+            if (countUnknown > 0)
+            {
+               distributionState = AppNotification.DISTRIBUTION_UNKNOWN;
+            } else if (countFalse > 0) {
+               distributionState = AppNotification.DISTRIBUTION_NOT_DONE;
+            } else if (countTrue > 0) {
+               distributionState = AppNotification.DISTRIBUTION_DONE;
+            } else {
+               throw new IllegalStateException("Reported distribution status is invalid.");
+            }
+         }
+       }
+       return distributionState;
     }
 
-    private void notifyInstallThread() {
-        synchronized (this) {
-            notify();
-        }
-    }
-
-    class InstallationListener implements NotificationListener {
-
-        private AdminClient client;
-        private ObjectName appManagement;
-        private NotificationFilter filter;
-
-        public InstallationListener(AdminClient adminClient,ObjectName appManagement,NotificationFilter filter) {
-            this.client = adminClient;
-            this.appManagement = appManagement;
-            this.filter = filter;
-        }
-
-        public synchronized void handleNotification(Notification notification, Object handback) {
-            AppNotification ev = (AppNotification) notification.getUserData();
-
-            if (ev.taskName.equals (AppNotification.INSTALL) && (ev.taskStatus.equals (AppNotification.STATUS_COMPLETED) || ev.taskStatus.equals (AppNotification.STATUS_FAILED))) {
-                try {
-                        client.removeNotificationListener(appManagement, this);
-                } catch (Throwable th) {
-                    System.err.println ("Error removing install listener: " + th);
-                }
-                notifyInstallThread();
-            }
-
-            if (ev.taskName.equals (AppNotification.UNINSTALL) && (ev.taskStatus.equals (AppNotification.STATUS_COMPLETED) || ev.taskStatus.equals (AppNotification.STATUS_FAILED))) {
-                try {
-                        client.removeNotificationListener(appManagement, this);
-                } catch (Throwable th) {
-                    System.err.println ("Error removing uninstall listener: " + th);
-                }
-                notifyInstallThread();
-            }
-        }
-
-        public NotificationFilter getFilter() {
-            return filter;
-        }
-
-        public AdminClient getClient() {
-            return client;
-        }
-
-        public ObjectName getAppManagement() {
-            return appManagement;
-        }
-    }
 }

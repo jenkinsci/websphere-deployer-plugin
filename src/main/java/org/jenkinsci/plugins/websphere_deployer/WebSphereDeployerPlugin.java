@@ -1,6 +1,7 @@
 package org.jenkinsci.plugins.websphere_deployer;
 
 import com.ibm.websphere.management.application.AppConstants;
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
@@ -163,7 +164,8 @@ public class WebSphereDeployerPlugin extends Notifier {
         if(build.getResult().equals(Result.SUCCESS)) {
             WebSphereDeploymentService service = new WebSphereDeploymentService();
             try {
-                connect(listener, service);
+                EnvVars env = build.getEnvironment(listener);
+                connect(listener, service, env);
                 for(FilePath path:gatherArtifactPaths(build, listener)) {
                     Artifact artifact = createArtifact(path,listener,service);
                     stopArtifact(artifact.getAppName(),listener,service);
@@ -246,10 +248,10 @@ public class WebSphereDeployerPlugin extends Notifier {
         return paths;
     }
 
-    private void connect(BuildListener listener,WebSphereDeploymentService service) throws Exception {
+    private void connect(BuildListener listener,WebSphereDeploymentService service,EnvVars env) throws Exception {
         listener.getLogger().println("Connecting to IBM WebSphere Application Server...");
         service.setConnectorType(getConnectorType());
-        service.setHost(getIpAddress());
+        service.setHost(env.expand(getIpAddress()));
         service.setPort(getPort());
         service.setUsername(getUsername());
         service.setPassword(getPassword());

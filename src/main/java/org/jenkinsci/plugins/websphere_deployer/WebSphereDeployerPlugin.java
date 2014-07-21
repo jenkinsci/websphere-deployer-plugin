@@ -260,16 +260,16 @@ public class WebSphereDeployerPlugin extends Notifier {
         listener.getLogger().println("Connecting to IBM WebSphere Application Server...");
         service.setConnectorType(getConnectorType());
         service.setHost(env.expand(getIpAddress()));
-        service.setPort(getPort());
-        service.setUsername(getUsername());
-        service.setPassword(getPassword());
-        service.setKeyStoreLocation(new File(getClientKeyFile()));
-        service.setKeyStorePassword(getClientKeyPassword());
-        service.setTrustStoreLocation(new File(getClientTrustFile()));
-        service.setTrustStorePassword(getClientTrustPassword());
-        service.setTargetCell(getCell());
-        service.setTargetNode(getNode());
-        service.setTargetServer(getServer());
+        service.setPort(env.expand(getPort()));
+        service.setUsername(env.expand(getUsername()));
+        service.setPassword(env.expand(getPassword()));
+        service.setKeyStoreLocation(new File(env.expand(getClientKeyFile())));
+        service.setKeyStorePassword(env.expand(getClientKeyPassword()));
+        service.setTrustStoreLocation(new File(env.expand(getClientTrustFile())));
+        service.setTrustStorePassword(env.expand(getClientTrustPassword()));
+        service.setTargetCell(env.expand(getCell()));
+        service.setTargetNode(env.expand(getNode()));
+        service.setTargetServer(env.expand(getServer()));
         service.connect();
     }
 

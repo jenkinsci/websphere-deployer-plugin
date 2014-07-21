@@ -17,6 +17,7 @@ import hudson.util.FormValidation;
 import hudson.util.Scrambler;
 import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.websphere.services.deployment.Artifact;
+import org.jenkinsci.plugins.websphere.services.deployment.DeploymentServiceException;
 import org.jenkinsci.plugins.websphere.services.deployment.WebSphereDeploymentService;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -50,6 +51,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final String clientKeyPassword;
     private final String clientTrustPassword;
     private final String earLevel;
+    private final String deploymentTimeout;
     private final boolean autoStart;
     private final boolean precompile;
     private final boolean reloading;
@@ -69,6 +71,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    String clientKeyPassword,
                                    String clientTrustPassword,
                                    String earLevel,
+                                   String deploymentTimeout,
                                    boolean autoStart,
                                    boolean precompile,
                                    boolean reloading) {
@@ -87,6 +90,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.clientKeyPassword = Scrambler.scramble(clientKeyPassword);
         this.clientTrustPassword = Scrambler.scramble(clientTrustPassword);
         this.earLevel = earLevel;
+        this.deploymentTimeout = deploymentTimeout;
         this.precompile = precompile;
         this.reloading = reloading;
     }
@@ -158,6 +162,10 @@ public class WebSphereDeployerPlugin extends Notifier {
     public boolean isAutoStart() {
         return autoStart;
     }
+    
+    public String getDeploymentTimeout() {
+		return deploymentTimeout;
+	}    
 
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
@@ -170,7 +178,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                     Artifact artifact = createArtifact(path,listener,service);
                     stopArtifact(artifact.getAppName(),listener,service);
                     uninstallArtifact(artifact.getAppName(),listener,service);
-                    deployArtifact(artifact,listener,service);
+                    deployArtifact(artifact,listener,service);                    
                     startArtifact(artifact.getAppName(),listener,service);
                 }
             } catch (Exception e) {
@@ -204,8 +212,8 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     private void startArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
         if(isAutoStart()) {
-            listener.getLogger().println("Starting New Application '"+appName+"'...");
-            service.startArtifact(appName);
+        	listener.getLogger().println("Starting New Application '"+appName+"'...");
+        	service.startArtifact(appName, Integer.parseInt(getDeploymentTimeout()));
         }
     }
 
@@ -366,7 +374,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         }
 
         public String getDisplayName() {
-            return "Deploy To IBM WebSphere Application Server";
+        	return "Deploy To IBM WebSphere Application Server";
         }
 
         @Override

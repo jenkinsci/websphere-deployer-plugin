@@ -53,37 +53,37 @@
             <groupId>com.ibm.ws</groupId>
             <artifactId>admin</artifactId>
             <version>8.5.0</version>
-            <scope>provided</scope>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>com.ibm.ws</groupId>
             <artifactId>orb</artifactId>
             <version>8.5.0</version>
-            <scope>provided</scope>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>com.ibm.ws</groupId>
             <artifactId>liberty-connector</artifactId>
             <version>8.5.5</version>
-            <scope>provided</scope>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>com.ibm.ws</groupId>
             <artifactId>liberty-rest-connector</artifactId>
             <version>8.5.5</version>
-            <scope>provided</scope>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>com.ibm.ws</groupId>
             <artifactId>liberty-basic</artifactId>
             <version>8.5.5</version>
-            <scope>provided</scope>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>com.ibm.ws</groupId>
             <artifactId>liberty-endpoint</artifactId>
             <version>8.5.5</version>
-            <scope>provided</scope>
+            <scope>runtime</scope>
         </dependency>
     </dependencies>
 

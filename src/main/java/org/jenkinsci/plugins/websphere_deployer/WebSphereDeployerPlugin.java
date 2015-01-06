@@ -1,6 +1,7 @@
 package org.jenkinsci.plugins.websphere_deployer;
 
 import com.ibm.websphere.management.application.AppConstants;
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
@@ -16,6 +17,7 @@ import hudson.util.FormValidation;
 import hudson.util.Scrambler;
 import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.websphere.services.deployment.Artifact;
+import org.jenkinsci.plugins.websphere.services.deployment.DeploymentServiceException;
 import org.jenkinsci.plugins.websphere.services.deployment.WebSphereDeploymentService;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -49,6 +51,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final String clientKeyPassword;
     private final String clientTrustPassword;
     private final String earLevel;
+    private final String deploymentTimeout;
     private final boolean autoStart;
     private final boolean precompile;
     private final boolean reloading;
@@ -68,6 +71,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    String clientKeyPassword,
                                    String clientTrustPassword,
                                    String earLevel,
+                                   String deploymentTimeout,
                                    boolean autoStart,
                                    boolean precompile,
                                    boolean reloading) {
@@ -86,6 +90,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.clientKeyPassword = Scrambler.scramble(clientKeyPassword);
         this.clientTrustPassword = Scrambler.scramble(clientTrustPassword);
         this.earLevel = earLevel;
+        this.deploymentTimeout = deploymentTimeout;
         this.precompile = precompile;
         this.reloading = reloading;
     }
@@ -157,18 +162,23 @@ public class WebSphereDeployerPlugin extends Notifier {
     public boolean isAutoStart() {
         return autoStart;
     }
+    
+    public String getDeploymentTimeout() {
+		return deploymentTimeout;
+	}    
 
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
         if(build.getResult().equals(Result.SUCCESS)) {
             WebSphereDeploymentService service = new WebSphereDeploymentService();
             try {
-                connect(listener, service);
+                EnvVars env = build.getEnvironment(listener);
+                connect(listener, service, env);
                 for(FilePath path:gatherArtifactPaths(build, listener)) {
                     Artifact artifact = createArtifact(path,listener,service);
                     stopArtifact(artifact.getAppName(),listener,service);
                     uninstallArtifact(artifact.getAppName(),listener,service);
-                    deployArtifact(artifact,listener,service);
+                    deployArtifact(artifact,listener,service);                    
                     startArtifact(artifact.getAppName(),listener,service);
                 }
             } catch (Exception e) {
@@ -202,8 +212,8 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     private void startArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
         if(isAutoStart()) {
-            listener.getLogger().println("Starting New Application '"+appName+"'...");
-            service.startArtifact(appName);
+        	listener.getLogger().println("Starting New Application '"+appName+"'...");
+        	service.startArtifact(appName, Integer.parseInt(getDeploymentTimeout()));
         }
     }
 
@@ -246,20 +256,20 @@ public class WebSphereDeployerPlugin extends Notifier {
         return paths;
     }
 
-    private void connect(BuildListener listener,WebSphereDeploymentService service) throws Exception {
+    private void connect(BuildListener listener,WebSphereDeploymentService service,EnvVars env) throws Exception {
         listener.getLogger().println("Connecting to IBM WebSphere Application Server...");
         service.setConnectorType(getConnectorType());
-        service.setHost(getIpAddress());
-        service.setPort(getPort());
-        service.setUsername(getUsername());
-        service.setPassword(getPassword());
-        service.setKeyStoreLocation(new File(getClientKeyFile()));
-        service.setKeyStorePassword(getClientKeyPassword());
-        service.setTrustStoreLocation(new File(getClientTrustFile()));
-        service.setTrustStorePassword(getClientTrustPassword());
-        service.setTargetCell(getCell());
-        service.setTargetNode(getNode());
-        service.setTargetServer(getServer());
+        service.setHost(env.expand(getIpAddress()));
+        service.setPort(env.expand(getPort()));
+        service.setUsername(env.expand(getUsername()));
+        service.setPassword(env.expand(getPassword()));
+        service.setKeyStoreLocation(new File(env.expand(getClientKeyFile())));
+        service.setKeyStorePassword(env.expand(getClientKeyPassword()));
+        service.setTrustStoreLocation(new File(env.expand(getClientTrustFile())));
+        service.setTrustStorePassword(env.expand(getClientTrustPassword()));
+        service.setTargetCell(env.expand(getCell()));
+        service.setTargetNode(env.expand(getNode()));
+        service.setTargetServer(env.expand(getServer()));
         service.connect();
     }
 
@@ -364,7 +374,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         }
 
         public String getDisplayName() {
-            return "Deploy To IBM WebSphere Application Server";
+        	return "Deploy To IBM WebSphere Application Server";
         }
 
         @Override

@@ -8,6 +8,7 @@ import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
 import hudson.model.Result;
+import hudson.remoting.VirtualChannel;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Notifier;
@@ -159,18 +160,35 @@ public class WebSphereDeployerPlugin extends Notifier {
     }
 
     @Override
-    public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
+    public boolean perform(final AbstractBuild build, final Launcher launcher, final BuildListener listener) {
         if(build.getResult().equals(Result.SUCCESS)) {
-            WebSphereDeploymentService service = new WebSphereDeploymentService();
+            final WebSphereDeploymentService service = new WebSphereDeploymentService();
             try {
                 connect(listener, service);
-                for(FilePath path:gatherArtifactPaths(build, listener)) {
-                    Artifact artifact = createArtifact(path,listener,service);
-                    stopArtifact(artifact.getAppName(),listener,service);
-                    uninstallArtifact(artifact.getAppName(),listener,service);
-                    deployArtifact(artifact,listener,service);
-                    startArtifact(artifact.getAppName(),listener,service);
-                }
+                for(final FilePath path:gatherArtifactPaths(build, listener)) {
+                    path.act(
+                        new FilePath.FileCallable<Boolean>() {
+                            public Boolean invoke(File f, VirtualChannel channel) throws IOException {
+                                try {
+                                    Artifact artifact = createArtifact(path, listener, service);
+                                    stopArtifact(artifact.getAppName(), listener, service);
+                                    uninstallArtifact(artifact.getAppName(), listener, service);
+                                    deployArtifact(artifact, listener, service);
+                                    startArtifact(artifact.getAppName(), listener, service);
+                                } catch (Exception e) {
+                                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                                    e.printStackTrace();
+                                    PrintStream p = new PrintStream(out);
+                                    e.printStackTrace(p);
+                                    listener.getLogger().println("Error deploying to IBM WebSphere Application Server: " + new String(out.toByteArray()));
+                                    build.setResult(Result.FAILURE);
+                                } finally {
+                                    service.disconnect();
+                                }
+                                return true;
+                            }
+                        });
+                    }
             } catch (Exception e) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
                 e.printStackTrace();

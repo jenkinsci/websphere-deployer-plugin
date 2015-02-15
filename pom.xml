@@ -43,6 +43,18 @@
         <url>https://github.com/jenkinsci/websphere-deployer-plugin</url>
     </scm>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.jenkins-ci.tools</groupId>
+                <artifactId>maven-hpi-plugin</artifactId>
+                <configuration>
+                    <pluginFirstClassLoader>true</pluginFirstClassLoader>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
     <dependencies>
         <dependency>
             <groupId>commons-lang</groupId>
@@ -53,37 +65,37 @@
             <groupId>com.ibm.ws</groupId>
             <artifactId>admin</artifactId>
             <version>8.5.0</version>
-            <scope>runtime</scope>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.ibm.ws</groupId>
             <artifactId>orb</artifactId>
             <version>8.5.0</version>
-            <scope>runtime</scope>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.ibm.ws</groupId>
             <artifactId>liberty-connector</artifactId>
             <version>8.5.5</version>
-            <scope>runtime</scope>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.ibm.ws</groupId>
             <artifactId>liberty-rest-connector</artifactId>
             <version>8.5.5</version>
-            <scope>runtime</scope>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.ibm.ws</groupId>
             <artifactId>liberty-basic</artifactId>
             <version>8.5.5</version>
-            <scope>runtime</scope>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.ibm.ws</groupId>
             <artifactId>liberty-endpoint</artifactId>
             <version>8.5.5</version>
-            <scope>runtime</scope>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 

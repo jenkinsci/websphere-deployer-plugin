@@ -47,6 +47,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final String node;
     private final String cell;
     private final String server;
+    private final String cluster;
     private final String artifacts;
     private final String clientKeyPassword;
     private final String clientTrustPassword;
@@ -68,6 +69,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    String node,
                                    String cell,
                                    String server,
+                                   String cluster,
                                    String clientKeyPassword,
                                    String clientTrustPassword,
                                    String earLevel,
@@ -86,6 +88,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.node = node;
         this.cell = cell;
         this.server = server;
+        this.cluster = cluster;
         this.autoStart = autoStart;
         this.clientKeyPassword = Scrambler.scramble(clientKeyPassword);
         this.clientTrustPassword = Scrambler.scramble(clientTrustPassword);
@@ -149,6 +152,10 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     public String getServer() {
         return server;
+    }
+
+    public String getCluster() {
+        return cluster;
     }
 
     public String getCell() {
@@ -270,6 +277,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         service.setTargetCell(env.expand(getCell()));
         service.setTargetNode(env.expand(getNode()));
         service.setTargetServer(env.expand(getServer()));
+        service.setTargetCluster(env.expand(getCluster()));
         service.connect();
     }
 

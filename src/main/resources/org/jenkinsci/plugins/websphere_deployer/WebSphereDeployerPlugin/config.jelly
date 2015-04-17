@@ -49,6 +49,9 @@
           <f:entry title="Target Server" field="server">
             <f:textbox />
           </f:entry>
+          <f:entry title="Target Cluster" field="cluster">
+            <f:textbox />
+          </f:entry>
           <f:entry title="Deployment Timeout (minutes)" field="deploymentTimeout">
             <f:textbox />
           </f:entry>       

@@ -77,5 +77,12 @@
           <f:entry title="JSP Reloading" field="reloading">
             <f:checkbox checked="${instance.reloading}" default="true"/>
           </f:entry>
+          <f:entry title="Application Classloader Policy" field="classLoaderPolicy">
+              <select name="classLoaderPolicy">
+                  <option value="">Default</option>
+                  <option value="0">Parent_First</option>
+                  <option value="1">Parent_Last</option>
+              </select>
+          </f:entry>
     </f:section>
 </j:jelly>

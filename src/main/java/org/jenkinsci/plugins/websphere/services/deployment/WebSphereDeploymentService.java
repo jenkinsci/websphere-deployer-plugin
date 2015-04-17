@@ -50,7 +50,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     public List<Server> listServers() {
         try {
             ObjectName jvmQuery = new ObjectName("WebSphere:*,type=Server");
-            Set<ObjectName> response = client.queryNames(jvmQuery,null);
+            Set<ObjectName> response = client.queryNames(jvmQuery, null);
             List<Server> servers = new ArrayList<Server>();
             for(ObjectName serverObjectName:response) {
                 Server server = new Server();
@@ -150,6 +150,10 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             preferences.put(AppConstants.APPDEPL_DFLTBNDG, defaultBinding);
             if(options.containsKey(AppConstants.APPDEPL_DFLTBNDG_VHOST)) {
                 defaultBinding.put(AppConstants.APPDEPL_DFLTBNDG_VHOST, options.get(AppConstants.APPDEPL_DFLTBNDG_VHOST));
+            }
+
+            if(options.containsKey(AppConstants.APPDEPL_CLASSLOADINGMODE)) {
+                defaultBinding.put(AppConstants.APPDEPL_CLASSLOADINGMODE,options.get(AppConstants.APPDEPL_CLASSLOADINGMODE));
             }
 
             AppDeploymentController controller = AppDeploymentController.readArchive(artifact.getSourcePath().getAbsolutePath(), preferences);

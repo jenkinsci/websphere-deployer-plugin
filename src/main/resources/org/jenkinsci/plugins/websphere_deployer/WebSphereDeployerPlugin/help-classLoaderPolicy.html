@@ -1,0 +1,12 @@
+<div>
+  WebSphere Application Server uses this setting to find and load new classes for an application in the order specified
+    in this setting. The "Parent First" class-loader class-loader mode causes the class loader to delegate the loading of classes
+    to its parent class loader before attempting to load the class from its local class path. This value is the default for the class-loader
+    policy and for standard JVM class loaders. The "Parent Last" class-loader mode causes the class loader to attempt
+    to load classes from its local class path before delegating the class loading to its parent. Using this policy, an
+    application class loader can override and provide its own version of a class that exists in the parent class loader.
+
+    <br/>
+    <br/>
+    <small>Source: <a href="http://www-01.ibm.com/support/knowledgecenter/SSAW57_8.5.5/com.ibm.websphere.nd.doc/ae/crun_classload.html?cp=SSAW57_8.5.5%2F1-8-2-5-0">IBM Knowledge Center</a></small>
+</div>

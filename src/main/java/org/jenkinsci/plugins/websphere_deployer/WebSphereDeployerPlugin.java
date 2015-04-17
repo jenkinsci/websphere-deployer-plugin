@@ -53,6 +53,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final String clientTrustPassword;
     private final String earLevel;
     private final String deploymentTimeout;
+    private final String classLoaderPolicy;
     private final boolean autoStart;
     private final boolean precompile;
     private final boolean reloading;
@@ -76,7 +77,8 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    String deploymentTimeout,
                                    boolean autoStart,
                                    boolean precompile,
-                                   boolean reloading) {
+                                   boolean reloading,
+                                   String classLoaderPolicy) {
         this.ipAddress = ipAddress;
         this.connectorType = connectorType;
         this.port = port;
@@ -96,6 +98,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.deploymentTimeout = deploymentTimeout;
         this.precompile = precompile;
         this.reloading = reloading;
+        this.classLoaderPolicy = classLoaderPolicy;
     }
 
     public String getEarLevel() {
@@ -203,10 +206,13 @@ public class WebSphereDeployerPlugin extends Notifier {
     }
 
     private void deployArtifact(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) throws Exception {
-        listener.getLogger().println("Deploying New '"+artifact.getAppName()+"' to IBM WebSphere Application Server");
+        listener.getLogger().println("Deploying New '" + artifact.getAppName() + "' to IBM WebSphere Application Server");
         HashMap<String,Object> options = new HashMap<String, Object>();
         options.put(AppConstants.APPDEPL_JSP_RELOADENABLED,isReloading());
         options.put(AppConstants.APPDEPL_PRECOMPILE_JSP,isPrecompile());
+        if(getClassLoaderPolicy() != null && !getClassLoaderPolicy().trim().equals("")) {
+            options.put(AppConstants.APPDEPL_CLASSLOADINGMODE, getClassLoaderPolicy());
+        }
         service.installArtifact(artifact, options);
     }
 
@@ -242,7 +248,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         artifact.setSourcePath(new File(path.getRemote()));
         artifact.setAppName(getAppName(artifact,service));
         if(artifact.getType() == Artifact.TYPE_WAR) {
-            generateEAR(artifact,listener,service);
+            generateEAR(artifact, listener, service);
         }
         return artifact;
     }
@@ -304,6 +310,10 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     public BuildStepMonitor getRequiredMonitorService() {
         return BuildStepMonitor.BUILD;
+    }
+
+    public String getClassLoaderPolicy() {
+        return classLoaderPolicy;
     }
 
     @Extension

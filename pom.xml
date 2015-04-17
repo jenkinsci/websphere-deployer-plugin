@@ -35,6 +35,13 @@
                 <role>Lead Developer</role>
             </roles>
         </developer>
+        <developer>
+            <name>Valerio Ponte</name>
+            <timezone>+1</timezone>
+            <roles>
+                <role>Contributor</role>
+            </roles>
+        </developer>
     </developers>
 
     <scm>

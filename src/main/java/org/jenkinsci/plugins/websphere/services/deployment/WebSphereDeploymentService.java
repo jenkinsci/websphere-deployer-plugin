@@ -3,6 +3,7 @@ package org.jenkinsci.plugins.websphere.services.deployment;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -13,11 +14,14 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import javax.management.MalformedObjectNameException;
 import javax.management.NotificationFilterSupport;
 import javax.management.ObjectName;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -30,6 +34,8 @@ import com.ibm.websphere.management.application.AppNotification;
 import com.ibm.websphere.management.application.client.AppDeploymentController;
 import com.ibm.websphere.management.application.client.AppDeploymentTask;
 import com.ibm.websphere.management.exception.ConnectorException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 /**
  * @author Greg Peters
@@ -73,8 +79,6 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 
             byte[] buf = new byte[1024];
             try {
-                String warName = artifact.getSourcePath().getName();
-                String context = warName.substring(0,warName.lastIndexOf("."));
                 ZipOutputStream out = new ZipOutputStream(new FileOutputStream(destination));
                 FileInputStream in = new FileInputStream(artifact.getSourcePath());
                 out.putNextEntry(new ZipEntry(artifact.getSourcePath().getName()));
@@ -87,7 +91,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
                 out.putNextEntry(new ZipEntry("META-INF/"));
                 out.closeEntry();
                 out.putNextEntry(new ZipEntry("META-INF/application.xml"));
-                out.write(getApplicationXML(context,earLevel).getBytes());
+                out.write(getApplicationXML(artifact,earLevel).getBytes());
                 out.closeEntry();
                 out.close();
             } catch (Exception e) {
@@ -95,15 +99,45 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             }
     }
 
-    private String getApplicationXML(String warName,String earLevel) {
+    /*
+    This method tries to read ibm-web-ext.xml and extract the value of context-root.
+    If any exception is thrown, it will fall back to the WAR name.
+     */
+    private String getContextRoot(Artifact artifact) {
+        try {
+            // open WAR and find ibm-web-ext.xml
+            ZipFile zipFile = new ZipFile(artifact.getSourcePath());
+            ZipEntry webExt = zipFile.getEntry("WEB-INF/ibm-web-ext.xml");
+            InputStream webExtContent = zipFile.getInputStream(webExt);
+
+            // parse ibm-web-ext.xml
+            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+            Document doc = dBuilder.parse(webExtContent);
+
+            // find uri attribute in context-root element
+            Element contextRoot = (Element) doc.getElementsByTagName("context-root").item(0);
+            String uri = contextRoot.getAttribute("uri");
+            uri += uri.startsWith("/") ? "" : "/";
+            return uri;
+        } catch (Exception e) {
+            e.printStackTrace();
+            String warName = artifact.getSourcePath().getName();
+            return warName.substring(0, warName.lastIndexOf("."));
+        }
+    }
+
+    private String getApplicationXML(Artifact artifact,String earLevel) {
+        String contextRoot = getContextRoot(artifact);
+        String warName = artifact.getSourcePath().getName();
         return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                                 "<application xmlns=\"http://java.sun.com/xml/ns/javaee\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/application_"+earLevel+".xsd\" version=\""+earLevel+"\">\n" +
                                 "  <description>"+warName+"</description>\n" +
                                 "  <display-name>"+warName+"</display-name>\n" +
                                 "  <module>\n" +
                                 "    <web>\n" +
-                                "      <web-uri>"+warName+".war</web-uri>\n" +
-                                "      <context-root>/"+warName+"</context-root>\n" +
+                                "      <web-uri>"+warName+"</web-uri>\n" +
+                                "      <context-root>"+contextRoot+"</context-root>\n" +
                                 "    </web>\n" +
                                 "  </module>\n" +
                                 "</application>";

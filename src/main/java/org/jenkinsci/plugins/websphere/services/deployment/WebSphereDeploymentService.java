@@ -118,7 +118,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             // find uri attribute in context-root element
             Element contextRoot = (Element) doc.getElementsByTagName("context-root").item(0);
             String uri = contextRoot.getAttribute("uri");
-            uri += uri.startsWith("/") ? "" : "/";
+            uri = uri.startsWith("/") ? "" : "/" + uri;
             return uri;
         } catch (Exception e) {
             e.printStackTrace();

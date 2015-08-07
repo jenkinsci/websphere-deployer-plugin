@@ -12,6 +12,51 @@
     <name>WebSphere Deployer Plugin</name>
     <inceptionYear>2013</inceptionYear>
     <url>https://wiki.jenkins-ci.org/display/JENKINS/WebSphere+Deployer+Plugin</url>
+    
+    <profiles>
+    	<profile>
+    		<!-- Use this profile for testing to prevent classloader issues with the following dependencies -->
+    		<id>TEST</id>
+			<dependencies>
+		        <dependency>
+		            <groupId>com.ibm.ws</groupId>
+		            <artifactId>admin</artifactId>
+		            <version>8.5.0</version>
+		            <scope>compile</scope>
+		        </dependency>
+		        <dependency>
+		            <groupId>com.ibm.ws</groupId>
+		            <artifactId>orb</artifactId>
+		            <version>8.5.0</version>
+		            <scope>compile</scope>
+		        </dependency>
+		        <dependency>
+		            <groupId>com.ibm.ws</groupId>
+		            <artifactId>liberty-connector</artifactId>
+		            <version>8.5.5</version>
+		            <scope>compile</scope>
+		        </dependency>
+		        <dependency>
+		            <groupId>com.ibm.ws</groupId>
+		            <artifactId>liberty-rest-connector</artifactId>
+		            <version>8.5.5</version>
+		            <scope>compile</scope>
+		        </dependency>
+		        <dependency>
+		            <groupId>com.ibm.ws</groupId>
+		            <artifactId>liberty-basic</artifactId>
+		            <version>8.5.5</version>
+		            <scope>compile</scope>
+		        </dependency>
+		        <dependency>
+		            <groupId>com.ibm.ws</groupId>
+		            <artifactId>liberty-endpoint</artifactId>
+		            <version>8.5.5</version>
+		            <scope>compile</scope>
+		        </dependency>
+			</dependencies>    		
+    	</profile>
+    </profiles>
 
     <description>
         Deploys your web artifacts locally or remotely to IBM WebSphere Application Server or IBM WebSphere Liberty Profile

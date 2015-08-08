@@ -16,7 +16,10 @@
     <profiles>
     	<profile>
     		<!-- Use this profile for testing to prevent classloader issues with the following dependencies -->
-    		<id>TEST</id>
+    		<id>TEST-WAS</id>
+    		<activation>
+    			<activeByDefault>true</activeByDefault>
+    		</activation>
 			<dependencies>
 		        <dependency>
 		            <groupId>com.ibm.ws</groupId>
@@ -30,6 +33,47 @@
 		            <version>8.5.0</version>
 		            <scope>compile</scope>
 		        </dependency>
+		        <dependency>
+		            <groupId>com.ibm.ws</groupId>
+		            <artifactId>liberty-connector</artifactId>
+		            <version>8.5.5</version>
+		            <scope>provided</scope>
+		        </dependency>
+		        <dependency>
+		            <groupId>com.ibm.ws</groupId>
+		            <artifactId>liberty-rest-connector</artifactId>
+		            <version>8.5.5</version>
+		            <scope>provided</scope>
+		        </dependency>
+		        <dependency>
+		            <groupId>com.ibm.ws</groupId>
+		            <artifactId>liberty-basic</artifactId>
+		            <version>8.5.5</version>
+		            <scope>provided</scope>
+		        </dependency>
+		        <dependency>
+		            <groupId>com.ibm.ws</groupId>
+		            <artifactId>liberty-endpoint</artifactId>
+		            <version>8.5.5</version>
+		            <scope>provided</scope>
+		        </dependency> 		        
+			</dependencies>    		
+    	</profile>
+    	<profile>
+    		<id>TEST-LIBERTY</id>
+    		<dependencies>
+		        <dependency>
+		            <groupId>com.ibm.ws</groupId>
+		            <artifactId>admin</artifactId>
+		            <version>8.5.0</version>
+		            <scope>provided</scope>
+		        </dependency>
+		        <dependency>
+		            <groupId>com.ibm.ws</groupId>
+		            <artifactId>orb</artifactId>
+		            <version>8.5.0</version>
+		            <scope>provided</scope>
+		        </dependency>    		
 		        <dependency>
 		            <groupId>com.ibm.ws</groupId>
 		            <artifactId>liberty-connector</artifactId>
@@ -53,8 +97,8 @@
 		            <artifactId>liberty-endpoint</artifactId>
 		            <version>8.5.5</version>
 		            <scope>compile</scope>
-		        </dependency>
-			</dependencies>    		
+		        </dependency>    		
+    		</dependencies>
     	</profile>
     </profiles>
 
@@ -112,42 +156,6 @@
             <groupId>commons-lang</groupId>
             <artifactId>commons-lang</artifactId>
             <version>2.5</version>
-        </dependency>
-        <dependency>
-            <groupId>com.ibm.ws</groupId>
-            <artifactId>admin</artifactId>
-            <version>8.5.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.ibm.ws</groupId>
-            <artifactId>orb</artifactId>
-            <version>8.5.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.ibm.ws</groupId>
-            <artifactId>liberty-connector</artifactId>
-            <version>8.5.5</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.ibm.ws</groupId>
-            <artifactId>liberty-rest-connector</artifactId>
-            <version>8.5.5</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.ibm.ws</groupId>
-            <artifactId>liberty-basic</artifactId>
-            <version>8.5.5</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.ibm.ws</groupId>
-            <artifactId>liberty-endpoint</artifactId>
-            <version>8.5.5</version>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
 

@@ -62,8 +62,12 @@
                     <j:when test="${instance.earLevel == '6'}">
                         <option value="6" selected="selected">Java EE 6</option>
                     </j:when>
+                    <j:when test="${instance.earLevel == '7'}">
+                        <option value="7" selected="selected">Java EE 7</option>
+                    </j:when>                    
                     <j:otherwise>
                         <option value="6">Java EE 6</option>
+                        <option value="7">Java EE 7</option>
                     </j:otherwise>
                 </j:choose>
             </select>

@@ -2,5 +2,5 @@
   This view is used to render the installed plugins page.
 -->
 <div>
-  Deploys your EAR files automatically to IBM WebSphere Application Server
+  Deploys your web artifacts automatically to IBM WebSphere Application Server and IBM WebSphere Liberty Profile
 </div>

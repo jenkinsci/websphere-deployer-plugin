@@ -108,23 +108,30 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             // open WAR and find ibm-web-ext.xml
             ZipFile zipFile = new ZipFile(artifact.getSourcePath());
             ZipEntry webExt = zipFile.getEntry("WEB-INF/ibm-web-ext.xml");
-            InputStream webExtContent = zipFile.getInputStream(webExt);
-
-            // parse ibm-web-ext.xml
-            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-            Document doc = dBuilder.parse(webExtContent);
-
-            // find uri attribute in context-root element
-            Element contextRoot = (Element) doc.getElementsByTagName("context-root").item(0);
-            String uri = contextRoot.getAttribute("uri");
-            uri = uri.startsWith("/") ? "" : "/" + uri;
-            return uri;
-        } catch (Exception e) {
-            e.printStackTrace();
-            String warName = artifact.getSourcePath().getName();
-            return warName.substring(0, warName.lastIndexOf("."));
+            if(webExt != null) { //not an IBM based WAR
+	            InputStream webExtContent = zipFile.getInputStream(webExt);
+	
+	            // parse ibm-web-ext.xml
+	            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+	            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+	            Document doc = dBuilder.parse(webExtContent);
+	
+	            // find uri attribute in context-root element
+	            Element contextRoot = (Element) doc.getElementsByTagName("context-root").item(0);
+	            String uri = contextRoot.getAttribute("uri");
+	            uri = uri.startsWith("/") ? "" : "/" + uri;
+	            return uri;
+            }
+            return getContextRootFromWarName(artifact);            		
+        } catch (Exception e) {            
+        	e.printStackTrace();
+            return getContextRootFromWarName(artifact);
         }
+    }
+    
+    private String getContextRootFromWarName(Artifact artifact) {
+    	String warName = artifact.getSourcePath().getName();
+    	return warName.substring(0, warName.lastIndexOf("."));
     }
 
     private String getApplicationXML(Artifact artifact,String earLevel) {

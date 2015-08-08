@@ -56,14 +56,20 @@
             <f:textbox />
           </f:entry>       
           <f:entry title="Generated EAR Level" field="earLevel">
-            <select name="earLevel">
-                <option value="5">Java EE 5</option>
+            <select name="earLevel">                
                 <j:choose>
+                	<j:when test="${instance.earLevel == '5' || instance.earLevel == '' || instance.earLevel == null}">
+                    	<option value="5">Java EE 5</option>
+                        <option value="6">Java EE 6</option>
+                        <option value="7">Java EE 7</option>                	
+                	</j:when>
                     <j:when test="${instance.earLevel == '6'}">
+                    	<option value="5">Java EE 5</option>
                         <option value="6" selected="selected">Java EE 6</option>
                         <option value="7">Java EE 7</option>
                     </j:when>
                     <j:when test="${instance.earLevel == '7'}">
+                    	<option value="5">Java EE 5</option>
                     	<option value="6">Java EE 6</option>
                         <option value="7" selected="selected">Java EE 7</option>
                     </j:when>                    
@@ -81,9 +87,23 @@
           </f:entry>
           <f:entry title="Application Classloader Policy" field="classLoaderPolicy">
               <select name="classLoaderPolicy">
-                  <option value="">Default</option>
-                  <option value="0">Parent_First</option>
-                  <option value="1">Parent_Last</option>
+              	<j:choose>
+              		<j:when test="${instance.classLoaderPolicy == '' || instance.classLoaderPolicy == null}">
+                  		<option value="">Default</option>
+                  		<option value="0">Parent_First</option>
+                  		<option value="1">Parent_Last</option>	
+                	</j:when>
+                	<j:when test="${instance.classLoaderPolicy == '0'}">
+                		<option value="">Default</option>
+                  		<option value="0" selected="selected">Parent_First</option>
+                  		<option value="1">Parent_Last</option>	
+                  	</j:when>
+                  	<j:when test="${instance.classLoaderPolicy == '1'}">
+                  		<option value="">Default</option>
+                  		<option value="0">Parent_First</option>
+                  		<option value="1" selected="selected">Parent_Last</option>	
+                  	</j:when>
+                 </j:choose>
               </select>
           </f:entry>
     </f:section>

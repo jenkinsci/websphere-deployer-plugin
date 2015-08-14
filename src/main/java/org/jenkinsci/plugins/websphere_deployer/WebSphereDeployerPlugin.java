@@ -338,7 +338,7 @@ public class WebSphereDeployerPlugin extends Notifier {
             WebSphereDeploymentService service = new WebSphereDeploymentService();
             try {
                 if(!service.isAvailable()) {
-                    String destination = System.getProperty("user.home")+File.separator+".jenkins"+File.separator+"plugins"+File.separator+"websphere-deployer"+File.separator+"WEB-INF"+File.separator+"lib"+File.separator;
+                    String destination = "<Jenkins_Root>"+File.separator+"plugins"+File.separator+"websphere-deployer"+File.separator+"WEB-INF"+File.separator+"lib"+File.separator;
                     return FormValidation.warning("Cannot find the required IBM WebSphere Application Server jar files in '"+destination+"'. Please copy them from IBM WebSphere Application Server (see plugin documentation)");
                 }
                 service.setConnectorType(connectorType);

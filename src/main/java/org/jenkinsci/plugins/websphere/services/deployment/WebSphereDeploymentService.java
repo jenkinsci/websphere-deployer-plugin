@@ -227,16 +227,14 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             appManagementProxy.installApplication(artifact.getSourcePath().getAbsolutePath(),artifact.getAppName(),preferences, null);
             
             NotificationFilterSupport filterSupport = createFilterSupport();
-            DeploymentNotificationListener listener = new DeploymentNotificationListener(getAdminClient(), 
-                     filterSupport, "Install " + artifact.getAppName(),AppNotification.INSTALL);            
+            DeploymentNotificationListener listener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Install " + artifact.getAppName(),AppNotification.INSTALL);            
             
-            synchronized(listener) 
-            {
+            synchronized(listener) {
                listener.wait();
             }
 
             if(!listener.isSuccessful())
-               throw new IllegalStateException("Application not sucessfully deployed: " + listener.getMessage());            
+               throw new DeploymentServiceException("Application not successfully deployed: " + listener.getMessage());            
             
         } catch (Exception e) {
             e.printStackTrace();
@@ -260,7 +258,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 			   listener.wait();
 			}
 			if(!listener.isSuccessful()){
-			   throw new IllegalStateException("Application not sucessfully undeployed: " + listener.getMessage());
+			   throw new DeploymentServiceException("Application not successfully undeployed: " + listener.getMessage());
 			}
 		} catch (Exception e) {
 			throw new DeploymentServiceException("Could not undeploy application", e);
@@ -299,9 +297,9 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
                String targetsStarted = appManagementProxy.startApplication(appName, null, null);
                log.info("Application was started on the following targets: " + targetsStarted);
                if (targetsStarted == null)
-                  throw new IllegalStateException("Start of the application was not successful. WAS JVM logs should contain the detailed error message.");
+                  throw new DeploymentServiceException("Start of the application was not successful. WAS JVM logs should contain the detailed error message.");
             } else {
-               throw new IllegalStateException("Distribution of application did not succeed to all nodes.");
+               throw new DeploymentServiceException("Distribution of application did not succeed on all nodes.");
             }        	
             AppManagementProxy.getJMXProxyForClient(getAdminClient()).startApplication(appName, new Hashtable(), null);
         } catch(Exception e) {
@@ -467,41 +465,39 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
      * Checks the listener and figures out the aggregate distribution status of all nodes
      */
     private String checkDistributionStatus(DeploymentNotificationListener listener) throws MalformedObjectNameException, NullPointerException, IllegalStateException {
-       String distributionState = AppNotification.DISTRIBUTION_UNKNOWN;
-       if (listener != null)
-       {
-         String compositeStatus = listener.getNotificationProps()
-            .getProperty(AppNotification.DISTRIBUTION_STATUS_COMPOSITE);
-         if (compositeStatus != null)
-         {
-            log.finer("compositeStatus: " + compositeStatus);
-            String[] serverStati = compositeStatus.split("\\+");
-            int countTrue = 0, countFalse = 0, countUnknown = 0;
-            for (String serverStatus : serverStati)
-            {
-               ObjectName objectName = new ObjectName(serverStatus);
-               distributionState = objectName.getKeyProperty("distribution");
-               log.finer("distributionState: " + distributionState);
-               if (distributionState.equals("true"))
-                  countTrue++;
-               if (distributionState.equals("false"))
-                  countFalse++;
-               if (distributionState.equals("unknown"))
-                  countUnknown++;
-            }
-            if (countUnknown > 0)
-            {
-               distributionState = AppNotification.DISTRIBUTION_UNKNOWN;
-            } else if (countFalse > 0) {
-               distributionState = AppNotification.DISTRIBUTION_NOT_DONE;
-            } else if (countTrue > 0) {
-               distributionState = AppNotification.DISTRIBUTION_DONE;
-            } else {
-               throw new IllegalStateException("Reported distribution status is invalid.");
-            }
-         }
-       }
-       return distributionState;
+		String distributionState = AppNotification.DISTRIBUTION_UNKNOWN;
+		if (listener != null) {
+			String compositeStatus = listener.getNotificationProps()
+					.getProperty(AppNotification.DISTRIBUTION_STATUS_COMPOSITE);
+			if (compositeStatus != null) {
+				log.finer("compositeStatus: " + compositeStatus);
+				String[] serverStati = compositeStatus.split("\\+");
+				int countTrue = 0, countFalse = 0, countUnknown = 0;
+				for (String serverStatus : serverStati) {
+					ObjectName objectName = new ObjectName(serverStatus);
+					distributionState = objectName
+							.getKeyProperty("distribution");
+					log.finer("distributionState: " + distributionState);
+					if (distributionState.equals("true"))
+						countTrue++;
+					if (distributionState.equals("false"))
+						countFalse++;
+					if (distributionState.equals("unknown"))
+						countUnknown++;
+				}
+				if (countUnknown > 0) {
+					distributionState = AppNotification.DISTRIBUTION_UNKNOWN;
+				} else if (countFalse > 0) {
+					distributionState = AppNotification.DISTRIBUTION_NOT_DONE;
+				} else if (countTrue > 0) {
+					distributionState = AppNotification.DISTRIBUTION_DONE;
+				} else {
+					throw new IllegalStateException(
+							"Reported distribution status is invalid.");
+				}
+			}
+		}
+		return distributionState;
     }
 
 }

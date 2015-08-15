@@ -224,7 +224,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         return preferences;
     }
 
-    public void installArtifact(Artifact artifact,HashMap<String,Object> options,BuildListener listener) {
+    public void installArtifact(Artifact artifact,HashMap<String,Object> options,BuildListener listener,boolean verbose) {
         if(!isConnected()) {
             throw new DeploymentServiceException("Cannot install artifact, no connection to IBM WebSphere Application Server exists");
         }
@@ -234,7 +234,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             appManagementProxy.installApplication(artifact.getSourcePath().getAbsolutePath(),artifact.getAppName(),preferences, null);
             
             NotificationFilterSupport filterSupport = createFilterSupport();
-            DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Install " + artifact.getAppName(),AppNotification.INSTALL,listener);            
+            DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Install " + artifact.getAppName(),AppNotification.INSTALL,listener,verbose);            
             
             synchronized(notifyListener) {
             	notifyListener.wait();
@@ -249,7 +249,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         }
     }
     
-	public void updateArtifact(Artifact artifact,HashMap<String, Object> options,BuildListener listener) {
+	public void updateArtifact(Artifact artifact,HashMap<String, Object> options,BuildListener listener,boolean verbose) {
         if(!isConnected()) {
             throw new DeploymentServiceException("Cannot update artifact, no connection to IBM WebSphere Application Server exists");
         }		
@@ -261,7 +261,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             appManagementProxy.redeployApplication(artifact.getSourcePath().getAbsolutePath(),artifact.getAppName(),preferences, null);
             
             NotificationFilterSupport filterSupport = createFilterSupport();
-            DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Update " + artifact.getAppName(),AppNotification.INSTALL,listener);            
+            DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Update " + artifact.getAppName(),AppNotification.INSTALL,listener,verbose);            
             
             synchronized(notifyListener) {
             	notifyListener.wait();
@@ -276,12 +276,12 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         }        
 	}    
 
-    public void uninstallArtifact(String appName,BuildListener listener) throws Exception {
+    public void uninstallArtifact(String appName,BuildListener listener,boolean verbose) throws Exception {
     	try {
 			Hashtable<Object, Object> prefs = new Hashtable<Object, Object>();
 			NotificationFilterSupport filterSupport = createFilterSupport();
 			
-			DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(),filterSupport,"Uninstall " + appName, AppNotification.UNINSTALL,listener);        
+			DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(),filterSupport,"Uninstall " + appName, AppNotification.UNINSTALL,listener,verbose);        
 
 			AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
 			
@@ -298,11 +298,11 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 		}
     }
 
-    public void startArtifact(String appName,BuildListener listener) throws Exception {
-    	startArtifact(appName, 5,listener);
+    public void startArtifact(String appName,BuildListener listener,boolean verbose) throws Exception {
+    	startArtifact(appName, 5,listener,verbose);
     }
     
-    public void startArtifact(String appName, int deploymentTimeout,BuildListener listener) throws Exception {
+    public void startArtifact(String appName, int deploymentTimeout,BuildListener listener,boolean verbose) throws Exception {
 		try {
 			NotificationFilterSupport filterSupport = createFilterSupport();
 			AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
@@ -314,7 +314,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 			while (checkDistributionStatus(distributionListener) != AppNotification.DISTRIBUTION_DONE && ++checkCount < secsToWait) {
 				Thread.sleep(1000);
 				
-				distributionListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, null,AppNotification.DISTRIBUTION_STATUS_NODE,listener);
+				distributionListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, null,AppNotification.DISTRIBUTION_STATUS_NODE,listener,verbose);
 
 				synchronized (distributionListener) {
 					appManagementProxy.getDistributionStatus(appName,new Hashtable<Object, Object>(), null);
@@ -337,7 +337,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 		}
     }
 
-    public void stopArtifact(String name,BuildListener listener) throws Exception {
+    public void stopArtifact(String name,BuildListener listener,boolean verbose) throws Exception {
         try {
             AppManagementProxy.getJMXProxyForClient(getAdminClient()).stopApplication(name, new Hashtable(), null);
         } catch(Exception e) {
@@ -373,6 +373,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         if(isConnected()) {
             System.out.println("WARNING: Already connected to WebSphere Application Server");
         }
+        System.setProperty("com.ibm.ssl.performURLHostNameVerification", "false");
         Properties config = new Properties();
         config.put (AdminClient.CONNECTOR_HOST, getHost());
         config.put (AdminClient.CONNECTOR_PORT, getPort());
@@ -396,6 +397,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 		System.clearProperty("com.ibm.ssl.keyStore");
 		System.clearProperty("com.ibm.ssl.trustStorePassword");
 		System.clearProperty("com.ibm.ssl.keyStorePassword");
+		System.clearProperty("com.ibm.ssl.performURLHostNameVerification");
     	if(client != null) {
     		client.getConnectorProperties().clear();
     		client = null;

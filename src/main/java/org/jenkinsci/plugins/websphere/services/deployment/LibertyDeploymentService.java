@@ -23,7 +23,7 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
     private JMXConnector connector;
     private MBeanServerConnection client;
 
-    public void installArtifact(Artifact artifact, HashMap<String, Object> options,BuildListener listener) {
+    public void installArtifact(Artifact artifact, HashMap<String, Object> options,BuildListener listener,boolean verbose) {
         try {
             ObjectName fileTransferServiceMBean = new ObjectName("WebSphere:feature=restConnector,type=FileTransfer,name=FileTransfer");
             if (client.isRegistered(fileTransferServiceMBean)) {
@@ -37,7 +37,7 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
         }
     }
 
-    public void uninstallArtifact(String name,BuildListener listener) {
+    public void uninstallArtifact(String name,BuildListener listener,boolean verbose) {
         try {
             ObjectName fileTransferServiceMBean = new ObjectName("WebSphere:feature=restConnector,type=FileTransfer,name=FileTransfer");
             if (client.isRegistered(fileTransferServiceMBean)) {
@@ -51,7 +51,7 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
         }
     }
 
-    public void startArtifact(String name,BuildListener listener) {
+    public void startArtifact(String name,BuildListener listener,boolean verbose) {
         try {
             ObjectName applicationMBean = new ObjectName("WebSphere:service=com.ibm.websphere.application.ApplicationMBean,name="+name);
             if (client.isRegistered(applicationMBean)) {
@@ -65,7 +65,7 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
         }
     }
 
-    public void stopArtifact(String name,BuildListener listener) {
+    public void stopArtifact(String name,BuildListener listener,boolean verbose) {
         try {
             ObjectName applicationMBean = new ObjectName("WebSphere:service=com.ibm.websphere.application.ApplicationMBean,name="+name);
             if (client.isRegistered(applicationMBean)) {

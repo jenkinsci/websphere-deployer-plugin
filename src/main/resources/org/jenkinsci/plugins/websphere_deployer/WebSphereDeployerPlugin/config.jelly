@@ -100,6 +100,9 @@
           <f:entry title="JSP Reloading" field="reloading">
             <f:checkbox checked="${instance.reloading}" default="true"/>
           </f:entry>
+          <f:entry title="Verbose Output" field="verbose">
+            <f:checkbox checked="${instance.verbose}" default="false"/>
+          </f:entry>          
           <f:entry title="Application Classloader Policy" field="classLoaderPolicy">
               <select name="classLoaderPolicy">
               	<j:choose>

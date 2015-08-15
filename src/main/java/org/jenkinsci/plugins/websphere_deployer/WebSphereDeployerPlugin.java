@@ -59,6 +59,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final String operations;
     private final boolean precompile;
     private final boolean reloading;
+    private final boolean verbose;
 
     @DataBoundConstructor
     public WebSphereDeployerPlugin(String ipAddress,
@@ -80,6 +81,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    String operations,
                                    boolean precompile,
                                    boolean reloading,
+                                   boolean verbose,
                                    String classLoaderPolicy) {
         this.ipAddress = ipAddress;
         this.connectorType = connectorType;
@@ -100,6 +102,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.deploymentTimeout = deploymentTimeout;
         this.precompile = precompile;
         this.reloading = reloading;
+        this.verbose = verbose;
         this.classLoaderPolicy = classLoaderPolicy;
     }
 
@@ -113,6 +116,10 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     public boolean isReloading() {
         return reloading;
+    }
+    
+    public boolean isVerbose() {
+    	return verbose;
     }
 
     public String getIpAddress() {
@@ -217,32 +224,32 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     private void deployArtifact(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) throws Exception {
         listener.getLogger().println("Deploying '" + artifact.getAppName() + "' to IBM WebSphere Application Server");
-        service.installArtifact(artifact, getDeploymentOptions(),listener);
+        service.installArtifact(artifact, getDeploymentOptions(),listener,verbose);
     }
 
     private void uninstallArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
         if(service.isArtifactInstalled(appName)) {
             listener.getLogger().println("Uninstalling Old Application '"+appName+"'...");
-            service.uninstallArtifact(appName,listener);
+            service.uninstallArtifact(appName,listener,verbose);
         }
     }
 
     private void startArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
     	listener.getLogger().println("Starting Application '"+appName+"'...");
-    	service.startArtifact(appName, Integer.parseInt(getDeploymentTimeout()),listener);
+    	service.startArtifact(appName, Integer.parseInt(getDeploymentTimeout()),listener,verbose);
     }
 
     private void stopArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
         if(service.isArtifactInstalled(appName)) {
             listener.getLogger().println("Stopping Old Application '"+appName+"'...");
-            service.stopArtifact(appName,listener);
+            service.stopArtifact(appName,listener,verbose);
         }
     }
     
     private void updateArtifact(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) throws Exception {
         if(service.isArtifactInstalled(artifact.getAppName())) {
             listener.getLogger().println("Updating '" + artifact.getAppName() + "' on IBM WebSphere Application Server");
-            service.updateArtifact(artifact, getDeploymentOptions(),listener);
+            service.updateArtifact(artifact, getDeploymentOptions(),listener,verbose);
         }
     }   
     
@@ -316,7 +323,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     }
 
     private void generateEAR(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) {
-        listener.getLogger().println("Generating EAR For New Artifact: "+artifact.getAppName());
+        listener.getLogger().println("Generating EAR For Artifact: "+artifact.getAppName());
         File modified = new File(artifact.getSourcePath().getParent(),artifact.getAppName()+".ear");
         service.generateEAR(artifact, modified, getEarLevel());
         artifact.setSourcePath(modified);

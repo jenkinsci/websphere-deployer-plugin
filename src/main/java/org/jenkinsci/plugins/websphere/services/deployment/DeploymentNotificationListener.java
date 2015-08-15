@@ -25,13 +25,15 @@ public class DeploymentNotificationListener implements NotificationListener
    private String message = "";
    private Properties notificationProps = new Properties();
    private BuildListener listener;
+   private boolean verbose;
 
-   public DeploymentNotificationListener(AdminClient adminClient, NotificationFilterSupport support, Object handBack, String eventTypeToCheck,BuildListener listener) throws Exception {
+   public DeploymentNotificationListener(AdminClient adminClient, NotificationFilterSupport support, Object handBack, String eventTypeToCheck,BuildListener listener,boolean verbose) throws Exception {
       super();
       this.adminClient = adminClient;
       this.filterSupport = support;
       this.eventTypeToCheck = eventTypeToCheck;
       this.listener = listener;
+      this.verbose = verbose;
       this.objectName = (ObjectName) adminClient.queryNames(new ObjectName("WebSphere:type=AppManagement,*"), null).iterator().next();
       adminClient.addNotificationListener(objectName, this, filterSupport, handBack);
    }
@@ -39,7 +41,9 @@ public class DeploymentNotificationListener implements NotificationListener
    public void handleNotification(Notification notification, Object handback)
    {
       AppNotification appNotification = (AppNotification) notification.getUserData();
-      listener.getLogger().println(appNotification.taskName+"] "+appNotification.message+"["+appNotification.taskStatus+"]");
+      if(verbose) {
+    	  listener.getLogger().println(appNotification.taskName+"] "+appNotification.message+"["+appNotification.taskStatus+"]");
+      }
       message += ("\n" + appNotification.message);
       if (
             appNotification.taskName.equals(eventTypeToCheck) && 

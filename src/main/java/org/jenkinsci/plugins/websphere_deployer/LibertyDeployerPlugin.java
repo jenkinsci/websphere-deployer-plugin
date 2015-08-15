@@ -152,25 +152,25 @@ public class LibertyDeployerPlugin extends Notifier {
     private void stopArtifact(String appName,BuildListener listener,LibertyDeploymentService service) throws Exception {
         if(service.isArtifactInstalled(appName)) {
             listener.getLogger().println("Stopping Old Application '"+appName+"'...");
-            service.stopArtifact(appName);
+            service.stopArtifact(appName,listener);
         }
     }
 
     private void uninstallArtifact(String appName,BuildListener listener,LibertyDeploymentService service) throws Exception {
         if(service.isArtifactInstalled(appName)) {
             listener.getLogger().println("Uninstalling Old Application '"+appName+"'...");
-            service.uninstallArtifact(appName);
+            service.uninstallArtifact(appName,listener);
         }
     }
 
     private void deployArtifact(Artifact artifact,BuildListener listener,LibertyDeploymentService service) throws Exception {
         listener.getLogger().println("Deploying New '"+artifact.getAppName()+"' to IBM WebSphere Liberty Profile");
-        service.installArtifact(artifact, new HashMap<String, Object>());
+        service.installArtifact(artifact, new HashMap<String, Object>(),listener);
     }
 
     private void startArtifact(String appName,BuildListener listener,LibertyDeploymentService service) throws Exception {
         listener.getLogger().println("Starting New Application '"+appName+"'...");
-        service.startArtifact(appName);
+        service.startArtifact(appName,listener);
     }
 
     private FilePath[] gatherArtifactPaths(AbstractBuild build,BuildListener listener) throws Exception {

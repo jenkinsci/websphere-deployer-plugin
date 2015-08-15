@@ -37,6 +37,8 @@ import java.util.HashMap;
  */
 public class WebSphereDeployerPlugin extends Notifier {
 
+	private final static String OPERATION_REINSTALL = "1";
+	private final static String OPERATION_UPDATE = "2";
     private final String ipAddress;
     private final String connectorType;
     private final String port;
@@ -54,7 +56,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final String earLevel;
     private final String deploymentTimeout;
     private final String classLoaderPolicy;
-    private final boolean autoStart;
+    private final String operations;
     private final boolean precompile;
     private final boolean reloading;
 
@@ -75,7 +77,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    String clientTrustPassword,
                                    String earLevel,
                                    String deploymentTimeout,
-                                   boolean autoStart,
+                                   String operations,
                                    boolean precompile,
                                    boolean reloading,
                                    String classLoaderPolicy) {
@@ -91,7 +93,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.cell = cell;
         this.server = server;
         this.cluster = cluster;
-        this.autoStart = autoStart;
+        this.operations = operations;
         this.clientKeyPassword = Scrambler.scramble(clientKeyPassword);
         this.clientTrustPassword = Scrambler.scramble(clientTrustPassword);
         this.earLevel = earLevel;
@@ -169,8 +171,8 @@ public class WebSphereDeployerPlugin extends Notifier {
         return artifacts;
     }
 
-    public boolean isAutoStart() {
-        return autoStart;
+    public String getOperations() {
+        return operations;
     }
     
     public String getDeploymentTimeout() {
@@ -187,8 +189,16 @@ public class WebSphereDeployerPlugin extends Notifier {
                 for(FilePath path:gatherArtifactPaths(build, listener)) {
                     Artifact artifact = createArtifact(path,listener,service);
                     stopArtifact(artifact.getAppName(),listener,service);
-                    uninstallArtifact(artifact.getAppName(),listener,service);
-                    deployArtifact(artifact,listener,service);                    
+                    if(getOperations().equals(OPERATION_REINSTALL)) {
+                    	uninstallArtifact(artifact.getAppName(),listener,service);
+                    	deployArtifact(artifact,listener,service);
+                    } else { //otherwise update application
+                    	if(!service.isArtifactInstalled(artifact.getAppName())) {
+                    		deployArtifact(artifact, listener, service); //do initial deployment
+                    	} else {
+                    		updateArtifact(artifact,listener,service);
+                    	}
+                    }
                     startArtifact(artifact.getAppName(),listener,service);
                 }
             } catch (Exception e) {
@@ -206,35 +216,44 @@ public class WebSphereDeployerPlugin extends Notifier {
     }
 
     private void deployArtifact(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) throws Exception {
-        listener.getLogger().println("Deploying New '" + artifact.getAppName() + "' to IBM WebSphere Application Server");
+        listener.getLogger().println("Deploying '" + artifact.getAppName() + "' to IBM WebSphere Application Server");
+        service.installArtifact(artifact, getDeploymentOptions(),listener);
+    }
+
+    private void uninstallArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
+        if(service.isArtifactInstalled(appName)) {
+            listener.getLogger().println("Uninstalling Old Application '"+appName+"'...");
+            service.uninstallArtifact(appName,listener);
+        }
+    }
+
+    private void startArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
+    	listener.getLogger().println("Starting Application '"+appName+"'...");
+    	service.startArtifact(appName, Integer.parseInt(getDeploymentTimeout()),listener);
+    }
+
+    private void stopArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
+        if(service.isArtifactInstalled(appName)) {
+            listener.getLogger().println("Stopping Old Application '"+appName+"'...");
+            service.stopArtifact(appName,listener);
+        }
+    }
+    
+    private void updateArtifact(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) throws Exception {
+        if(service.isArtifactInstalled(artifact.getAppName())) {
+            listener.getLogger().println("Updating '" + artifact.getAppName() + "' on IBM WebSphere Application Server");
+            service.updateArtifact(artifact, getDeploymentOptions(),listener);
+        }
+    }   
+    
+    private HashMap<String,Object> getDeploymentOptions() {
         HashMap<String,Object> options = new HashMap<String, Object>();
         options.put(AppConstants.APPDEPL_JSP_RELOADENABLED,isReloading());
         options.put(AppConstants.APPDEPL_PRECOMPILE_JSP,isPrecompile());
         if(getClassLoaderPolicy() != null && !getClassLoaderPolicy().trim().equals("")) {
             options.put(AppConstants.APPDEPL_CLASSLOADINGMODE, getClassLoaderPolicy());
         }
-        service.installArtifact(artifact, options);
-    }
-
-    private void uninstallArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
-        if(service.isArtifactInstalled(appName)) {
-            listener.getLogger().println("Uninstalling Old Application '"+appName+"'...");
-            service.uninstallArtifact(appName);
-        }
-    }
-
-    private void startArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
-        if(isAutoStart()) {
-        	listener.getLogger().println("Starting New Application '"+appName+"'...");
-        	service.startArtifact(appName, Integer.parseInt(getDeploymentTimeout()));
-        }
-    }
-
-    private void stopArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
-        if(service.isArtifactInstalled(appName)) {
-            listener.getLogger().println("Stopping Old Application '"+appName+"'...");
-            service.stopArtifact(appName);
-        }
+        return options;
     }
 
     private Artifact createArtifact(FilePath path,BuildListener listener,WebSphereDeploymentService service) {

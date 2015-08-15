@@ -1,5 +1,7 @@
 package org.jenkinsci.plugins.websphere.services.deployment;
 
+import hudson.model.BuildListener;
+
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,52 +24,41 @@ public class DeploymentNotificationListener implements NotificationListener
    private boolean successful = true;
    private String message = "";
    private Properties notificationProps = new Properties();
+   private BuildListener listener;
 
-   public DeploymentNotificationListener(AdminClient adminClient, NotificationFilterSupport support, Object handBack, String eventTypeToCheck) 
-      throws Exception
-   {
+   public DeploymentNotificationListener(AdminClient adminClient, NotificationFilterSupport support, Object handBack, String eventTypeToCheck,BuildListener listener) throws Exception {
       super();
       this.adminClient = adminClient;
       this.filterSupport = support;
       this.eventTypeToCheck = eventTypeToCheck;
-      this.objectName = (ObjectName) adminClient.queryNames(new ObjectName("WebSphere:type=AppManagement,*"), null)
-            .iterator().next();
+      this.listener = listener;
+      this.objectName = (ObjectName) adminClient.queryNames(new ObjectName("WebSphere:type=AppManagement,*"), null).iterator().next();
       adminClient.addNotificationListener(objectName, this, filterSupport, handBack);
    }
 
    public void handleNotification(Notification notification, Object handback)
    {
       AppNotification appNotification = (AppNotification) notification.getUserData();
-      if (log.isLoggable(Level.FINEST)) {
-         log.finest("handleNotification message: " + appNotification.message);
-         log.finest("handleNotification taskName: " + appNotification.taskName);
-         log.finest("handleNotification taskStatus: " + appNotification.taskStatus);
-         log.finest("handleNotification eventProps: " + appNotification.props);
-      }
-      message = message += "\n" + appNotification.message;
+      listener.getLogger().println(appNotification.taskName+"] "+appNotification.message+"["+appNotification.taskStatus+"]");
+      message += ("\n" + appNotification.message);
       if (
             appNotification.taskName.equals(eventTypeToCheck) && 
             (appNotification.taskStatus.equals(AppNotification.STATUS_COMPLETED) || 
                   appNotification.taskStatus.equals(AppNotification.STATUS_FAILED)))
       {
-         try
-         {
-            adminClient.removeNotificationListener(objectName, this);
-            if (appNotification.taskStatus.equals(AppNotification.STATUS_FAILED))
-            {
-               successful = false;
-            } else {
-               notificationProps = appNotification.props;
-            }
-               
-            synchronized (this)
-            {
-               notifyAll();
-            }
-         }
-         catch (Exception e)
-         {
-         }
+			try {
+				adminClient.removeNotificationListener(objectName, this);
+				if (appNotification.taskStatus.equals(AppNotification.STATUS_FAILED)) {
+					successful = false;
+				} else {
+					notificationProps = appNotification.props;
+				}
+
+				synchronized (this) {
+					notifyAll();
+				}
+			} catch (Exception e) {
+			}
       }
    }
 

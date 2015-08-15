@@ -1,14 +1,16 @@
 package org.jenkinsci.plugins.websphere.services.deployment;
 
+import hudson.model.BuildListener;
+
 import java.io.File;
 import java.util.HashMap;
 
 public interface DeploymentService {
 
-    void installArtifact(Artifact artifact, HashMap<String, Object> options);
-    void uninstallArtifact(String name) throws Exception;
-    void startArtifact(String name) throws Exception;
-    void stopArtifact(String name) throws Exception;
+    void installArtifact(Artifact artifact, HashMap<String, Object> options,BuildListener listener);
+    void uninstallArtifact(String name,BuildListener listener) throws Exception;
+    void startArtifact(String name,BuildListener listener) throws Exception;
+    void stopArtifact(String name,BuildListener listener) throws Exception;
     boolean isArtifactInstalled(String name);
     void setTrustStoreLocation(File location);
     void setKeyStoreLocation(File location);

@@ -1,7 +1,9 @@
 package org.jenkinsci.plugins.websphere.services.deployment;
 
-import com.ibm.websphere.application.ApplicationMBean;
-import com.ibm.websphere.filetransfer.FileTransferMBean;
+import hudson.model.BuildListener;
+
+import java.io.IOException;
+import java.util.HashMap;
 
 import javax.management.JMX;
 import javax.management.MBeanServerConnection;
@@ -9,8 +11,9 @@ import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
-import java.io.IOException;
-import java.util.HashMap;
+
+import com.ibm.websphere.application.ApplicationMBean;
+import com.ibm.websphere.filetransfer.FileTransferMBean;
 
 /**
  * @author Greg Peters
@@ -20,7 +23,7 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
     private JMXConnector connector;
     private MBeanServerConnection client;
 
-    public void installArtifact(Artifact artifact, HashMap<String, Object> options) {
+    public void installArtifact(Artifact artifact, HashMap<String, Object> options,BuildListener listener) {
         try {
             ObjectName fileTransferServiceMBean = new ObjectName("WebSphere:feature=restConnector,type=FileTransfer,name=FileTransfer");
             if (client.isRegistered(fileTransferServiceMBean)) {
@@ -34,7 +37,7 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
         }
     }
 
-    public void uninstallArtifact(String name) {
+    public void uninstallArtifact(String name,BuildListener listener) {
         try {
             ObjectName fileTransferServiceMBean = new ObjectName("WebSphere:feature=restConnector,type=FileTransfer,name=FileTransfer");
             if (client.isRegistered(fileTransferServiceMBean)) {
@@ -48,7 +51,7 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
         }
     }
 
-    public void startArtifact(String name) {
+    public void startArtifact(String name,BuildListener listener) {
         try {
             ObjectName applicationMBean = new ObjectName("WebSphere:service=com.ibm.websphere.application.ApplicationMBean,name="+name);
             if (client.isRegistered(applicationMBean)) {
@@ -62,7 +65,7 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
         }
     }
 
-    public void stopArtifact(String name) {
+    public void stopArtifact(String name,BuildListener listener) {
         try {
             ObjectName applicationMBean = new ObjectName("WebSphere:service=com.ibm.websphere.application.ApplicationMBean,name="+name);
             if (client.isRegistered(applicationMBean)) {

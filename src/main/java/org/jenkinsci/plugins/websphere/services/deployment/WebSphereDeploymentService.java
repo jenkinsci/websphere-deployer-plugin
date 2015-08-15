@@ -1,5 +1,7 @@
 package org.jenkinsci.plugins.websphere.services.deployment;
 
+import hudson.model.BuildListener;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -24,9 +26,12 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.lang.StringUtils;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 import com.ibm.websphere.management.AdminClient;
 import com.ibm.websphere.management.AdminClientFactory;
+import com.ibm.websphere.management.Session;
 import com.ibm.websphere.management.application.AppConstants;
 import com.ibm.websphere.management.application.AppManagement;
 import com.ibm.websphere.management.application.AppManagementProxy;
@@ -34,8 +39,7 @@ import com.ibm.websphere.management.application.AppNotification;
 import com.ibm.websphere.management.application.client.AppDeploymentController;
 import com.ibm.websphere.management.application.client.AppDeploymentTask;
 import com.ibm.websphere.management.exception.ConnectorException;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
+import com.ibm.ws.management.AdminClientImpl;
 
 /**
  * @author Greg Peters
@@ -186,129 +190,154 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             throw new DeploymentServiceException(e.getMessage(),e);
         }
     }
+    
+    private Hashtable<String,Object> buildDeploymentPreferences(Artifact artifact,HashMap<String,Object> options) throws Exception {
+        Hashtable<String,Object> preferences = new Hashtable<String,Object>();
+        preferences.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
 
-    public void installArtifact(Artifact artifact,HashMap<String,Object> options) {
-        if(!isConnected()) {
-            throw new DeploymentServiceException("Cannot install artifact, no connection to WebSphere Application Server exists");
+        Properties defaultBinding = new Properties();
+        preferences.put(AppConstants.APPDEPL_DFLTBNDG, defaultBinding);
+        if(options.containsKey(AppConstants.APPDEPL_DFLTBNDG_VHOST)) {
+            defaultBinding.put(AppConstants.APPDEPL_DFLTBNDG_VHOST, options.get(AppConstants.APPDEPL_DFLTBNDG_VHOST));
         }
-        try {
-            Hashtable<String,Object> preferences = new Hashtable<String,Object>();
-            preferences.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
 
-            Properties defaultBinding = new Properties();
-            preferences.put(AppConstants.APPDEPL_DFLTBNDG, defaultBinding);
-            if(options.containsKey(AppConstants.APPDEPL_DFLTBNDG_VHOST)) {
-                defaultBinding.put(AppConstants.APPDEPL_DFLTBNDG_VHOST, options.get(AppConstants.APPDEPL_DFLTBNDG_VHOST));
-            }
+        if(options.containsKey(AppConstants.APPDEPL_CLASSLOADINGMODE)) {
+            defaultBinding.put(AppConstants.APPDEPL_CLASSLOADINGMODE,options.get(AppConstants.APPDEPL_CLASSLOADINGMODE));
+        }
 
-            if(options.containsKey(AppConstants.APPDEPL_CLASSLOADINGMODE)) {
-                defaultBinding.put(AppConstants.APPDEPL_CLASSLOADINGMODE,options.get(AppConstants.APPDEPL_CLASSLOADINGMODE));
-            }
+        AppDeploymentController controller = AppDeploymentController.readArchive(artifact.getSourcePath().getAbsolutePath(), preferences);
+        
+        String[] validationResult = controller.validate();
+        if (validationResult != null && validationResult.length > 0) {
+           throw new DeploymentServiceException("Unable to complete all task data for deployment preparation. Reason: " + Arrays.toString(validationResult));
+        }
 
-            AppDeploymentController controller = AppDeploymentController.readArchive(artifact.getSourcePath().getAbsolutePath(), preferences);
-            
-            String[] validationResult = controller.validate();
-            if (validationResult != null && validationResult.length > 0) {
-               throw new DeploymentServiceException("Unable to complete all task data for deployment preparation. Reason: " + Arrays.toString(validationResult));
-            }
+        controller.saveAndClose();
 
-            controller.saveAndClose();
+        preferences.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
+        preferences.put(AppConstants.APPDEPL_ARCHIVE_UPLOAD, Boolean.TRUE);
+        preferences.put(AppConstants.APPDEPL_PRECOMPILE_JSP, artifact.isPrecompile());
 
-            preferences.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
-            preferences.put(AppConstants.APPDEPL_ARCHIVE_UPLOAD, Boolean.TRUE);
-            preferences.put(AppConstants.APPDEPL_PRECOMPILE_JSP, artifact.isPrecompile());
+        Hashtable<String,Object> module2server = new Hashtable<String,Object>();
+        module2server.put("*", getTarget());
+        preferences.put(AppConstants.APPDEPL_MODULE_TO_SERVER, module2server);    	
+        return preferences;
+    }
 
-            Hashtable<String,Object> module2server = new Hashtable<String,Object>();
-            module2server.put("*", getTarget());
-            preferences.put(AppConstants.APPDEPL_MODULE_TO_SERVER, module2server);
-            
-            AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
-            
+    public void installArtifact(Artifact artifact,HashMap<String,Object> options,BuildListener listener) {
+        if(!isConnected()) {
+            throw new DeploymentServiceException("Cannot install artifact, no connection to IBM WebSphere Application Server exists");
+        }
+        try {        	
+        	Hashtable<String,Object> preferences = buildDeploymentPreferences(artifact, options);            
+            AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());           
             appManagementProxy.installApplication(artifact.getSourcePath().getAbsolutePath(),artifact.getAppName(),preferences, null);
             
             NotificationFilterSupport filterSupport = createFilterSupport();
-            DeploymentNotificationListener listener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Install " + artifact.getAppName(),AppNotification.INSTALL);            
+            DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Install " + artifact.getAppName(),AppNotification.INSTALL,listener);            
             
-            synchronized(listener) {
-               listener.wait();
+            synchronized(notifyListener) {
+            	notifyListener.wait();
             }
 
-            if(!listener.isSuccessful())
-               throw new DeploymentServiceException("Application not successfully deployed: " + listener.getMessage());            
+            if(!notifyListener.isSuccessful())
+               throw new DeploymentServiceException("Application not successfully deployed: " + notifyListener.getMessage());            
             
         } catch (Exception e) {
             e.printStackTrace();
             throw new DeploymentServiceException("Failed to install artifact: "+e.getMessage());
         }
     }
+    
+	public void updateArtifact(Artifact artifact,HashMap<String, Object> options,BuildListener listener) {
+        if(!isConnected()) {
+            throw new DeploymentServiceException("Cannot update artifact, no connection to IBM WebSphere Application Server exists");
+        }		
+        try {
+        	Hashtable<String,Object> preferences = buildDeploymentPreferences(artifact, options);
+            
+            AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
+            
+            appManagementProxy.redeployApplication(artifact.getSourcePath().getAbsolutePath(),artifact.getAppName(),preferences, null);
+            
+            NotificationFilterSupport filterSupport = createFilterSupport();
+            DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Update " + artifact.getAppName(),AppNotification.INSTALL,listener);            
+            
+            synchronized(notifyListener) {
+            	notifyListener.wait();
+            }
 
-    public void uninstallArtifact(String appName) throws Exception {
+            if(!notifyListener.isSuccessful())
+               throw new DeploymentServiceException("Application not successfully updated: " + notifyListener.getMessage());            
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new DeploymentServiceException("Failed to updated artifact: "+e.getMessage());
+        }        
+	}    
+
+    public void uninstallArtifact(String appName,BuildListener listener) throws Exception {
     	try {
 			Hashtable<Object, Object> prefs = new Hashtable<Object, Object>();
 			NotificationFilterSupport filterSupport = createFilterSupport();
 			
-			DeploymentNotificationListener listener = new DeploymentNotificationListener(getAdminClient(),filterSupport,"Uninstall " + appName, AppNotification.UNINSTALL);        
+			DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(),filterSupport,"Uninstall " + appName, AppNotification.UNINSTALL,listener);        
 
 			AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
 			
 			appManagementProxy.uninstallApplication(appName,prefs,null);
 			
-			synchronized(listener) 
-			{
-			   listener.wait();
+			synchronized (notifyListener) {
+				notifyListener.wait();
 			}
-			if(!listener.isSuccessful()){
-			   throw new DeploymentServiceException("Application not successfully undeployed: " + listener.getMessage());
+			if (!notifyListener.isSuccessful()) {
+				throw new DeploymentServiceException("Application not successfully undeployed: "+ notifyListener.getMessage());
 			}
 		} catch (Exception e) {
 			throw new DeploymentServiceException("Could not undeploy application", e);
 		}
     }
 
-    public void startArtifact(String appName) throws Exception {
-    	startArtifact(appName, 5);
+    public void startArtifact(String appName,BuildListener listener) throws Exception {
+    	startArtifact(appName, 5,listener);
     }
     
-    public void startArtifact(String appName, int deploymentTimeout) throws Exception {
-        try {
-        	NotificationFilterSupport filterSupport = createFilterSupport();
-        	AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
-            DeploymentNotificationListener distributionListener = null;
-            int checkCount = 0;
-            
-            int secsToWait = deploymentTimeout * 60;
-            
-            while (checkDistributionStatus(distributionListener) != AppNotification.DISTRIBUTION_DONE
-                  && ++checkCount < secsToWait)
-            {
-               Thread.sleep(1000);
-               
-               distributionListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, null, AppNotification.DISTRIBUTION_STATUS_NODE);
-               
-               synchronized(distributionListener)
-               {
-                  appManagementProxy.getDistributionStatus(appName, new Hashtable<Object, Object>(), null);
-                  distributionListener.wait();
-               }
-            }
+    public void startArtifact(String appName, int deploymentTimeout,BuildListener listener) throws Exception {
+		try {
+			NotificationFilterSupport filterSupport = createFilterSupport();
+			AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
+			DeploymentNotificationListener distributionListener = null;
+			int checkCount = 0;
 
-            if (checkCount <= secsToWait)
-            {
-               String targetsStarted = appManagementProxy.startApplication(appName, null, null);
-               log.info("Application was started on the following targets: " + targetsStarted);
-               if (targetsStarted == null)
-                  throw new DeploymentServiceException("Start of the application was not successful. WAS JVM logs should contain the detailed error message.");
-            } else {
-               throw new DeploymentServiceException("Distribution of application did not succeed on all nodes.");
-            }        	
-            AppManagementProxy.getJMXProxyForClient(getAdminClient()).startApplication(appName, new Hashtable(), null);
-        } catch(Exception e) {
-            e.printStackTrace();
-            throw new DeploymentServiceException("Could not start artifact '"+appName+"': "+e.toString());
-        }
+			int secsToWait = deploymentTimeout * 60;
+
+			while (checkDistributionStatus(distributionListener) != AppNotification.DISTRIBUTION_DONE && ++checkCount < secsToWait) {
+				Thread.sleep(1000);
+				
+				distributionListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, null,AppNotification.DISTRIBUTION_STATUS_NODE,listener);
+
+				synchronized (distributionListener) {
+					appManagementProxy.getDistributionStatus(appName,new Hashtable<Object, Object>(), null);
+					distributionListener.wait();
+				}
+			}
+
+			if (checkCount <= secsToWait) {
+				String targetsStarted = appManagementProxy.startApplication(appName, null, null);
+				log.info("Application was started on the following targets: "+ targetsStarted);
+				if (targetsStarted == null)
+					throw new DeploymentServiceException("Start of the application was not successful. WAS JVM logs should contain the detailed error message.");
+			} else {
+				throw new DeploymentServiceException("Distribution of application did not succeed on all nodes.");
+			}
+			AppManagementProxy.getJMXProxyForClient(getAdminClient()).startApplication(appName, new Hashtable(), null);
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new DeploymentServiceException("Could not start artifact '"+ appName + "': " + e.toString());
+		}
     }
 
-    public void stopArtifact(String name) throws Exception {
+    public void stopArtifact(String name,BuildListener listener) throws Exception {
         try {
             AppManagementProxy.getJMXProxyForClient(getAdminClient()).stopApplication(name, new Hashtable(), null);
         } catch(Exception e) {
@@ -359,7 +388,18 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
 
     public void disconnect() {
-        client = null;
+		System.clearProperty("javax.net.ssl.trustStore");
+		System.clearProperty("javax.net.ssl.keyStore");
+		System.clearProperty("javax.net.ssl.trustStorePassword");
+		System.clearProperty("javax.net.ssl.keyStorePassword");
+		System.clearProperty("com.ibm.ssl.trustStore");
+		System.clearProperty("com.ibm.ssl.keyStore");
+		System.clearProperty("com.ibm.ssl.trustStorePassword");
+		System.clearProperty("com.ibm.ssl.keyStorePassword");
+    	if(client != null) {
+    		client.getConnectorProperties().clear();
+    		client = null;
+    	}
     }
 
     public boolean isAvailable() {
@@ -379,7 +419,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
 
     private void injectSecurityConfiguration(Properties config) {
-        config.put(AdminClient.CACHE_DISABLED, "false");
+        config.put(AdminClient.CACHE_DISABLED, "true");
         config.put(AdminClient.CONNECTOR_SECURITY_ENABLED, "true");
         config.put(AdminClient.USERNAME, getUsername());
         config.put(AdminClient.PASSWORD, getPassword());

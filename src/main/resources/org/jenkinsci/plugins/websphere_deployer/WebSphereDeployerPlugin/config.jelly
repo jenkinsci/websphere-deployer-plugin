@@ -5,8 +5,12 @@
         <f:textbox />
       </f:entry>
         <f:entry title="Connector Type" field="connectorType">
-            <select name="connectorType">
+            <select name="connectorType">            
                 <option value="SOAP">SOAP</option>
+                <option value="RMI">RMI</option>
+                <option value="JSR160RMI">RMI-JSR160</option>
+                <option value="IPC">IPC</option>
+                <option value="JMS">JMS</option>
             </select>
         </f:entry>
       <f:entry title="Port" field="port">
@@ -76,8 +80,19 @@
                 </j:choose>
             </select>
           </f:entry>
-          <f:entry title="Start Application" field="autoStart">
-            <f:checkbox checked="${instance.autoStart}" default="true"/>
+          <f:entry title="Operations" field="operations">
+             <select name="operations">                
+                <j:choose>
+                	<j:when test="${instance.operations == '1' || instance.operations == null}">
+                    	<option value="1">Install/Reinstall Application(s)</option>
+                        <option value="2">Install/Update Application(s)</option>  	
+                	</j:when>
+                    <j:when test="${instance.operations == '2'}">
+                    	<option value="1">Install/Reinstall Application(s)</option>
+                        <option value="2" selected="selected">Install/Update Application(s)</option>  
+                    </j:when>              
+                </j:choose>
+            </select>
           </f:entry>
           <f:entry title="Precompile JSPs" field="precompile">
             <f:checkbox checked="${instance.precompile}" default="true"/>

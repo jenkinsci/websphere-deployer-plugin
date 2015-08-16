@@ -1,10 +1,9 @@
 websphere-deployer-plugin
 =========================
 
-This plugin is designed with WebSphere Full Profile and Liberty Profiles in mind. The underlying architectures
-of the existing WebSphere plugins do not work well moving forward.
+This plugin is designed to deploy to WebSphere Full Profile and WebSphere Liberty Profile.
 
-We will support
+We will support.
 
 <ul>
   <li>Global Security</li>

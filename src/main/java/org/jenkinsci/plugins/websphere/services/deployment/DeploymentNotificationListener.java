@@ -45,11 +45,7 @@ public class DeploymentNotificationListener implements NotificationListener
     	  listener.getLogger().println(appNotification.taskName+"] "+appNotification.message+"["+appNotification.taskStatus+"]");
       }
       message += ("\n" + appNotification.message);
-      if (
-            appNotification.taskName.equals(eventTypeToCheck) && 
-            (appNotification.taskStatus.equals(AppNotification.STATUS_COMPLETED) || 
-                  appNotification.taskStatus.equals(AppNotification.STATUS_FAILED)))
-      {
+      if (appNotification.taskName.equals(eventTypeToCheck) && (appNotification.taskStatus.equals(AppNotification.STATUS_COMPLETED) || appNotification.taskStatus.equals(AppNotification.STATUS_FAILED))) {
 			try {
 				adminClient.removeNotificationListener(objectName, this);
 				if (appNotification.taskStatus.equals(AppNotification.STATUS_FAILED)) {
@@ -66,29 +62,26 @@ public class DeploymentNotificationListener implements NotificationListener
       }
    }
 
-   public String getMessage()
-   {
-      return message;
-   }
-   
-   public Properties getNotificationProps()
-   {
-      return notificationProps;
-   }
-   
-   public boolean isSuccessful()
-   {
-      return successful;
-   }
+	public String getMessage() {
+		return message;
+	}
+
+	public Properties getNotificationProps() {
+		return notificationProps;
+	}
+
+	public boolean isSuccessful() {
+		return successful;
+	}
 
 	public AdminClient getAdminClient() {
 		return adminClient;
 	}
-	
+
 	public NotificationFilterSupport getFilterSupport() {
 		return filterSupport;
 	}
-	
+
 	public ObjectName getObjectName() {
 		return objectName;
 	}

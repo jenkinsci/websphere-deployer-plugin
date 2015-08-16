@@ -59,6 +59,9 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 
     public List<Server> listServers() {
         try {
+        	if(!isConnected()) {
+        		throw new DeploymentServiceException("Cannot list servers, please connect to WebSphere first");
+        	}
             ObjectName jvmQuery = new ObjectName("WebSphere:*,type=Server");
             Set<ObjectName> response = client.queryNames(jvmQuery, null);
             List<Server> servers = new ArrayList<Server>();

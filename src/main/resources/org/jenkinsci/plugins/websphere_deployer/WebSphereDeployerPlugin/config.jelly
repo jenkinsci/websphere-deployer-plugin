@@ -41,7 +41,7 @@
        title="Test Connection" progress="Connecting..."
        method="testConnection" with="ipAddress,connectorType,port,username,password,clientKeyFile,clientTrustFile,clientKeyPassword,clientTrustPassword" />
     <f:section title="WebSphere Deployment">
-          <f:entry title="EAR Path" field="artifacts">
+          <f:entry title="EAR/WAR Path" field="artifacts">
             <f:textbox />
           </f:entry>
           <f:entry title="Target Node" field="node">

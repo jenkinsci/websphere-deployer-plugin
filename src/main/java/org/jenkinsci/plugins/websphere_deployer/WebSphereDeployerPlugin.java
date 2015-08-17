@@ -1,34 +1,37 @@
 package org.jenkinsci.plugins.websphere_deployer;
 
-import com.ibm.websphere.management.application.AppConstants;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
 import hudson.model.Result;
+import hudson.model.AbstractBuild;
+import hudson.model.AbstractProject;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Notifier;
 import hudson.tasks.Publisher;
 import hudson.util.FormValidation;
 import hudson.util.Scrambler;
-import net.sf.json.JSONObject;
-import org.jenkinsci.plugins.websphere.services.deployment.Artifact;
-import org.jenkinsci.plugins.websphere.services.deployment.DeploymentServiceException;
-import org.jenkinsci.plugins.websphere.services.deployment.WebSphereDeploymentService;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.StaplerRequest;
 
-import javax.servlet.ServletException;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.HashMap;
+
+import javax.servlet.ServletException;
+
+import net.sf.json.JSONObject;
+
+import org.jenkinsci.plugins.websphere.services.deployment.Artifact;
+import org.jenkinsci.plugins.websphere.services.deployment.WebSphereDeploymentService;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.StaplerRequest;
+
+import com.ibm.websphere.management.application.AppConstants;
 
 /**
  * A Jenkins plugin for deploying to WebSphere either locally or remotely.
@@ -190,6 +193,8 @@ public class WebSphereDeployerPlugin extends Notifier {
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
         if(build.getResult().equals(Result.SUCCESS)) {
             WebSphereDeploymentService service = new WebSphereDeploymentService();
+            service.setVerbose(isVerbose());
+            service.setBuildListener(listener);
             try {
                 EnvVars env = build.getEnvironment(listener);
                 connect(listener, service, env);
@@ -224,32 +229,32 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     private void deployArtifact(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) throws Exception {
         listener.getLogger().println("Deploying '" + artifact.getAppName() + "' to IBM WebSphere Application Server");
-        service.installArtifact(artifact, getDeploymentOptions(),listener,verbose);
+        service.installArtifact(artifact, getDeploymentOptions());
     }
 
     private void uninstallArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
         if(service.isArtifactInstalled(appName)) {
             listener.getLogger().println("Uninstalling Old Application '"+appName+"'...");
-            service.uninstallArtifact(appName,listener,verbose);
+            service.uninstallArtifact(appName);
         }
     }
 
     private void startArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
     	listener.getLogger().println("Starting Application '"+appName+"'...");
-    	service.startArtifact(appName, Integer.parseInt(getDeploymentTimeout()),listener,verbose);
+    	service.startArtifact(appName, Integer.parseInt(getDeploymentTimeout()));
     }
 
     private void stopArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
         if(service.isArtifactInstalled(appName)) {
             listener.getLogger().println("Stopping Old Application '"+appName+"'...");
-            service.stopArtifact(appName,listener,verbose);
+            service.stopArtifact(appName);
         }
     }
     
     private void updateArtifact(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) throws Exception {
         if(service.isArtifactInstalled(artifact.getAppName())) {
             listener.getLogger().println("Updating '" + artifact.getAppName() + "' on IBM WebSphere Application Server");
-            service.updateArtifact(artifact, getDeploymentOptions(),listener,verbose);
+            service.updateArtifact(artifact, getDeploymentOptions());
         }
     }   
     

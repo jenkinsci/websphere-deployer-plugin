@@ -31,7 +31,6 @@ import org.w3c.dom.Element;
 
 import com.ibm.websphere.management.AdminClient;
 import com.ibm.websphere.management.AdminClientFactory;
-import com.ibm.websphere.management.Session;
 import com.ibm.websphere.management.application.AppConstants;
 import com.ibm.websphere.management.application.AppManagement;
 import com.ibm.websphere.management.application.AppManagementProxy;
@@ -39,7 +38,6 @@ import com.ibm.websphere.management.application.AppNotification;
 import com.ibm.websphere.management.application.client.AppDeploymentController;
 import com.ibm.websphere.management.application.client.AppDeploymentTask;
 import com.ibm.websphere.management.exception.ConnectorException;
-import com.ibm.ws.management.AdminClientImpl;
 
 /**
  * @author Greg Peters
@@ -56,6 +54,8 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     private String targetServer;
     private String targetNode;
     private String targetCell;
+    private boolean verbose;
+    private BuildListener buildListener;
 
     public List<Server> listServers() {
         try {
@@ -83,27 +83,26 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
 
     public void generateEAR(Artifact artifact, File destination,String earLevel) {
-
-            byte[] buf = new byte[1024];
-            try {
-                ZipOutputStream out = new ZipOutputStream(new FileOutputStream(destination));
-                FileInputStream in = new FileInputStream(artifact.getSourcePath());
-                out.putNextEntry(new ZipEntry(artifact.getSourcePath().getName()));
-                int len;
-                while ((len = in.read(buf)) > 0) {
-                    out.write(buf, 0, len);
-                }
-                out.closeEntry();
-                in.close();
-                out.putNextEntry(new ZipEntry("META-INF/"));
-                out.closeEntry();
-                out.putNextEntry(new ZipEntry("META-INF/application.xml"));
-                out.write(getApplicationXML(artifact,earLevel).getBytes());
-                out.closeEntry();
-                out.close();
-            } catch (Exception e) {
-                e.printStackTrace();
+        byte[] buf = new byte[1024];
+        try {
+            ZipOutputStream out = new ZipOutputStream(new FileOutputStream(destination));
+            FileInputStream in = new FileInputStream(artifact.getSourcePath());
+            out.putNextEntry(new ZipEntry(artifact.getSourcePath().getName()));
+            int len;
+            while ((len = in.read(buf)) > 0) {
+                out.write(buf, 0, len);
             }
+            out.closeEntry();
+            in.close();
+            out.putNextEntry(new ZipEntry("META-INF/"));
+            out.closeEntry();
+            out.putNextEntry(new ZipEntry("META-INF/application.xml"));
+            out.write(getApplicationXML(artifact,earLevel).getBytes());
+            out.closeEntry();
+            out.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /*
@@ -227,7 +226,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         return preferences;
     }
 
-    public void installArtifact(Artifact artifact,HashMap<String,Object> options,BuildListener listener,boolean verbose) {
+    public void installArtifact(Artifact artifact,HashMap<String,Object> options) {
         if(!isConnected()) {
             throw new DeploymentServiceException("Cannot install artifact, no connection to IBM WebSphere Application Server exists");
         }
@@ -237,7 +236,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             appManagementProxy.installApplication(artifact.getSourcePath().getAbsolutePath(),artifact.getAppName(),preferences, null);
             
             NotificationFilterSupport filterSupport = createFilterSupport();
-            DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Install " + artifact.getAppName(),AppNotification.INSTALL,listener,verbose);            
+            DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Install " + artifact.getAppName(),AppNotification.INSTALL,buildListener,verbose);            
             
             synchronized(notifyListener) {
             	notifyListener.wait();
@@ -252,7 +251,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         }
     }
     
-	public void updateArtifact(Artifact artifact,HashMap<String, Object> options,BuildListener listener,boolean verbose) {
+	public void updateArtifact(Artifact artifact,HashMap<String, Object> options) {
         if(!isConnected()) {
             throw new DeploymentServiceException("Cannot update artifact, no connection to IBM WebSphere Application Server exists");
         }		
@@ -264,7 +263,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             appManagementProxy.redeployApplication(artifact.getSourcePath().getAbsolutePath(),artifact.getAppName(),preferences, null);
             
             NotificationFilterSupport filterSupport = createFilterSupport();
-            DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Update " + artifact.getAppName(),AppNotification.INSTALL,listener,verbose);            
+            DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Update " + artifact.getAppName(),AppNotification.INSTALL,buildListener,verbose);            
             
             synchronized(notifyListener) {
             	notifyListener.wait();
@@ -279,12 +278,12 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         }        
 	}    
 
-    public void uninstallArtifact(String appName,BuildListener listener,boolean verbose) throws Exception {
+    public void uninstallArtifact(String appName) throws Exception {
     	try {
 			Hashtable<Object, Object> prefs = new Hashtable<Object, Object>();
 			NotificationFilterSupport filterSupport = createFilterSupport();
 			
-			DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(),filterSupport,"Uninstall " + appName, AppNotification.UNINSTALL,listener,verbose);        
+			DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(),filterSupport,"Uninstall " + appName, AppNotification.UNINSTALL,buildListener,verbose);        
 
 			AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
 			
@@ -301,11 +300,11 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 		}
     }
 
-    public void startArtifact(String appName,BuildListener listener,boolean verbose) throws Exception {
-    	startArtifact(appName, 5,listener,verbose);
+    public void startArtifact(String appName) throws Exception {
+    	startArtifact(appName, 5);
     }
     
-    public void startArtifact(String appName, int deploymentTimeout,BuildListener listener,boolean verbose) throws Exception {
+    public void startArtifact(String appName, int deploymentTimeout) throws Exception {
 		try {
 			NotificationFilterSupport filterSupport = createFilterSupport();
 			AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
@@ -317,7 +316,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 			while (checkDistributionStatus(distributionListener) != AppNotification.DISTRIBUTION_DONE && ++checkCount < secsToWait) {
 				Thread.sleep(1000);
 				
-				distributionListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, null,AppNotification.DISTRIBUTION_STATUS_NODE,listener,verbose);
+				distributionListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, null,AppNotification.DISTRIBUTION_STATUS_NODE,buildListener,verbose);
 
 				synchronized (distributionListener) {
 					appManagementProxy.getDistributionStatus(appName,new Hashtable<Object, Object>(), null);
@@ -328,8 +327,9 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 			if (checkCount <= secsToWait) {
 				String targetsStarted = appManagementProxy.startApplication(appName, null, null);
 				log.info("Application was started on the following targets: "+ targetsStarted);
-				if (targetsStarted == null)
+				if (targetsStarted == null) {
 					throw new DeploymentServiceException("Start of the application was not successful. WAS JVM logs should contain the detailed error message.");
+				}
 			} else {
 				throw new DeploymentServiceException("Distribution of application did not succeed on all nodes.");
 			}
@@ -340,12 +340,12 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 		}
     }
 
-    public void stopArtifact(String name,BuildListener listener,boolean verbose) throws Exception {
+    public void stopArtifact(String appName) throws Exception {
         try {
-            AppManagementProxy.getJMXProxyForClient(getAdminClient()).stopApplication(name, new Hashtable(), null);
+            AppManagementProxy.getJMXProxyForClient(getAdminClient()).stopApplication(appName, new Hashtable<Object,Object>(), null);
         } catch(Exception e) {
             e.printStackTrace();
-            throw new DeploymentServiceException("Could not stop artifact '"+name+"': "+e.getMessage());
+            throw new DeploymentServiceException("Could not stop artifact '"+appName+"': "+e.getMessage());
         }
     }
 
@@ -505,24 +505,33 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     public void setTargetCell(String targetCell) {
         this.targetCell = targetCell;
     }
+    public void setVerbose(boolean verbose) {
+    	this.verbose = verbose;
+    }
+    public void setBuildListener(BuildListener listener) {
+    	this.buildListener = listener;
+    }
 
     /*
      * Checks the listener and figures out the aggregate distribution status of all nodes
      */
-    private String checkDistributionStatus(DeploymentNotificationListener listener) throws MalformedObjectNameException, NullPointerException, IllegalStateException {
+    private String checkDistributionStatus(DeploymentNotificationListener listener) throws MalformedObjectNameException {
 		String distributionState = AppNotification.DISTRIBUTION_UNKNOWN;
 		if (listener != null) {
-			String compositeStatus = listener.getNotificationProps()
-					.getProperty(AppNotification.DISTRIBUTION_STATUS_COMPOSITE);
-			if (compositeStatus != null) {
-				log.finer("compositeStatus: " + compositeStatus);
-				String[] serverStati = compositeStatus.split("\\+");
+			System.out.println("Properties: \r\n"+listener.getNotificationProps());
+			String compositeServers = listener.getNotificationProps().getProperty(AppNotification.DISTRIBUTION_STATUS_COMPOSITE);
+			if (compositeServers != null) {
+				if(verbose) {
+					buildListener.getLogger().println("Server Composite: "+ compositeServers);
+				}
+				String[] servers = compositeServers.split("\\+");
 				int countTrue = 0, countFalse = 0, countUnknown = 0;
-				for (String serverStatus : serverStati) {
-					ObjectName objectName = new ObjectName(serverStatus);
-					distributionState = objectName
-							.getKeyProperty("distribution");
-					log.finer("distributionState: " + distributionState);
+				for (String server : servers) {
+					ObjectName serverObject = new ObjectName(server);
+					distributionState = serverObject.getKeyProperty("distribution");
+					if(verbose) {
+						buildListener.getLogger().println("Distributed to "+server+": "+distributionState);
+					}
 					if (distributionState.equals("true"))
 						countTrue++;
 					if (distributionState.equals("false"))
@@ -537,8 +546,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 				} else if (countTrue > 0) {
 					distributionState = AppNotification.DISTRIBUTION_DONE;
 				} else {
-					throw new IllegalStateException(
-							"Reported distribution status is invalid.");
+					throw new DeploymentServiceException("Reported distribution status is invalid.");
 				}
 			}
 		}

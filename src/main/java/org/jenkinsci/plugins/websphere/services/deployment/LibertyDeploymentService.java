@@ -1,7 +1,5 @@
 package org.jenkinsci.plugins.websphere.services.deployment;
 
-import hudson.model.BuildListener;
-
 import java.io.IOException;
 import java.util.HashMap;
 
@@ -23,7 +21,7 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
     private JMXConnector connector;
     private MBeanServerConnection client;
 
-    public void installArtifact(Artifact artifact, HashMap<String, Object> options,BuildListener listener,boolean verbose) {
+    public void installArtifact(Artifact artifact, HashMap<String, Object> options) {
         try {
             ObjectName fileTransferServiceMBean = new ObjectName("WebSphere:feature=restConnector,type=FileTransfer,name=FileTransfer");
             if (client.isRegistered(fileTransferServiceMBean)) {
@@ -37,7 +35,7 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
         }
     }
 
-    public void uninstallArtifact(String name,BuildListener listener,boolean verbose) {
+    public void uninstallArtifact(String name) {
         try {
             ObjectName fileTransferServiceMBean = new ObjectName("WebSphere:feature=restConnector,type=FileTransfer,name=FileTransfer");
             if (client.isRegistered(fileTransferServiceMBean)) {
@@ -51,7 +49,7 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
         }
     }
 
-    public void startArtifact(String name,BuildListener listener,boolean verbose) {
+    public void startArtifact(String name) {
         try {
             ObjectName applicationMBean = new ObjectName("WebSphere:service=com.ibm.websphere.application.ApplicationMBean,name="+name);
             if (client.isRegistered(applicationMBean)) {
@@ -65,7 +63,7 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
         }
     }
 
-    public void stopArtifact(String name,BuildListener listener,boolean verbose) {
+    public void stopArtifact(String name) {
         try {
             ObjectName applicationMBean = new ObjectName("WebSphere:service=com.ibm.websphere.application.ApplicationMBean,name="+name);
             if (client.isRegistered(applicationMBean)) {

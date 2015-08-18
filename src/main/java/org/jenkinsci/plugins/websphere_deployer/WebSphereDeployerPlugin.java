@@ -241,7 +241,11 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     private void startArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
     	listener.getLogger().println("Starting Application '"+appName+"'...");
-    	service.startArtifact(appName, Integer.parseInt(getDeploymentTimeout()));
+    	try {
+    		service.startArtifact(appName, Integer.parseInt(getDeploymentTimeout()));
+    	} catch(NumberFormatException e) {
+    		service.startArtifact(appName);
+    	}
     }
 
     private void stopArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {

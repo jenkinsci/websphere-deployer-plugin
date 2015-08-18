@@ -518,7 +518,6 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     private String checkDistributionStatus(DeploymentNotificationListener listener) throws MalformedObjectNameException {
 		String distributionState = AppNotification.DISTRIBUTION_UNKNOWN;
 		if (listener != null) {
-			System.out.println("Properties: \r\n"+listener.getNotificationProps());
 			String compositeServers = listener.getNotificationProps().getProperty(AppNotification.DISTRIBUTION_STATUS_COMPOSITE);
 			if (compositeServers != null) {
 				if(verbose) {

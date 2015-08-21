@@ -165,7 +165,7 @@ public class LibertyDeployerPlugin extends Notifier {
 
     private void deployArtifact(Artifact artifact,BuildListener listener,LibertyDeploymentService service) throws Exception {
         listener.getLogger().println("Deploying '"+artifact.getAppName()+"' to IBM WebSphere Liberty Profile");
-        service.installArtifact(artifact, new HashMap<String, Object>());
+        service.installArtifact(artifact);
     }
 
     private void startArtifact(String appName,BuildListener listener,LibertyDeploymentService service) throws Exception {

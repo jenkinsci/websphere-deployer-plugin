@@ -13,19 +13,22 @@ import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Notifier;
 import hudson.tasks.Publisher;
 import hudson.util.FormValidation;
-import hudson.util.Scrambler;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import javax.servlet.ServletException;
 
 import net.sf.json.JSONObject;
 
+import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.websphere.services.deployment.Artifact;
+import org.jenkinsci.plugins.websphere.services.deployment.Server;
 import org.jenkinsci.plugins.websphere.services.deployment.WebSphereDeploymentService;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -41,84 +44,98 @@ import com.ibm.websphere.management.application.AppConstants;
 public class WebSphereDeployerPlugin extends Notifier {
 
 	private final static String OPERATION_REINSTALL = "1";
-	private final static String OPERATION_UPDATE = "2";
     private final String ipAddress;
     private final String connectorType;
     private final String port;
-    private final String username;
-    private final String password;
-    private final String clientKeyFile;
-    private final String clientTrustFile;
-    private final String node;
-    private final String cell;
-    private final String server;
-    private final String cluster;
     private final String artifacts;
-    private final String clientKeyPassword;
-    private final String clientTrustPassword;
     private final String earLevel;
     private final String deploymentTimeout;
+    private final String classLoaderOrder;
     private final String classLoaderPolicy;
     private final String operations;
+    private final String context;
+    private final String installPath;
+    private final String targets;
     private final boolean precompile;
     private final boolean reloading;
+    private final boolean jspReloading;
     private final boolean verbose;
+    private final boolean distribute;
+    private final WebSphereSecurity security;
 
     @DataBoundConstructor
     public WebSphereDeployerPlugin(String ipAddress,
                                    String connectorType,
                                    String port,
-                                   String username,
-                                   String password,
-                                   String clientKeyFile,
-                                   String clientTrustFile,
+                                   String installPath,
+                                   WebSphereSecurity security,
                                    String artifacts,
-                                   String node,
-                                   String cell,
-                                   String server,
-                                   String cluster,
-                                   String clientKeyPassword,
-                                   String clientTrustPassword,
                                    String earLevel,
                                    String deploymentTimeout,
                                    String operations,
+                                   String context,
+                                   String targets,
                                    boolean precompile,
                                    boolean reloading,
+                                   boolean jspReloading,
                                    boolean verbose,
-                                   String classLoaderPolicy) {
-        this.ipAddress = ipAddress;
+                                   boolean distribute,
+                                   String classLoaderPolicy,
+                                   String classLoaderOrder) {
+    	this.context = context;
+    	this.targets = targets;
+    	this.installPath = installPath;
+        this.ipAddress = ipAddress;        
         this.connectorType = connectorType;
-        this.port = port;
-        this.username = username;
-        this.password = Scrambler.scramble(password);
-        this.clientKeyFile = clientKeyFile;
-        this.clientTrustFile = clientTrustFile;
         this.artifacts = artifacts;
-        this.node = node;
-        this.cell = cell;
-        this.server = server;
-        this.cluster = cluster;
+        this.port = port;
         this.operations = operations;
-        this.clientKeyPassword = Scrambler.scramble(clientKeyPassword);
-        this.clientTrustPassword = Scrambler.scramble(clientTrustPassword);
         this.earLevel = earLevel;
         this.deploymentTimeout = deploymentTimeout;
         this.precompile = precompile;
         this.reloading = reloading;
+        this.jspReloading = jspReloading;
         this.verbose = verbose;
+        this.distribute = distribute;
+        this.security = security;
         this.classLoaderPolicy = classLoaderPolicy;
+        this.classLoaderOrder = classLoaderOrder;
+    }
+    
+    public String getClassLoaderOrder() {
+    	return classLoaderOrder;
+    }
+    
+    public String getClassLoaderPolicy() {
+    	return classLoaderPolicy;
+    }
+    
+    public String getTargets() {
+    	return targets;
     }
 
     public String getEarLevel() {
         return earLevel;
     }
 
+    public WebSphereSecurity getSecurity() {
+    	return security;
+    }
+    
+    public boolean isDistribute() {
+    	return distribute;
+    }
+    
     public boolean isPrecompile() {
         return precompile;
     }
 
     public boolean isReloading() {
         return reloading;
+    }
+    
+    public boolean isJspReloading() {
+    	return jspReloading;
     }
     
     public boolean isVerbose() {
@@ -128,6 +145,14 @@ public class WebSphereDeployerPlugin extends Notifier {
     public String getIpAddress() {
         return ipAddress;
     }
+    
+    public String getContext() {
+    	return context;
+    }
+    
+    public String getInstallPath() {
+    	return installPath;
+    }
 
     public String getConnectorType() {
         return connectorType;
@@ -135,46 +160,6 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     public String getPort() {
         return port;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public String getPassword() {
-        return Scrambler.descramble(password);
-    }
-
-    public String getClientKeyPassword() {
-        return Scrambler.descramble(clientKeyPassword);
-    }
-
-    public String getClientTrustPassword() {
-        return Scrambler.descramble(clientTrustPassword);
-    }
-
-    public String getClientKeyFile() {
-        return clientKeyFile;
-    }
-
-    public String getClientTrustFile() {
-        return clientTrustFile;
-    }
-
-    public String getNode() {
-        return node;
-    }
-
-    public String getServer() {
-        return server;
-    }
-
-    public String getCluster() {
-        return cluster;
-    }
-
-    public String getCell() {
-        return cell;
     }
 
     public String getArtifacts() {
@@ -192,14 +177,13 @@ public class WebSphereDeployerPlugin extends Notifier {
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
         if(build.getResult().equals(Result.SUCCESS)) {
-            WebSphereDeploymentService service = new WebSphereDeploymentService();
-            service.setVerbose(isVerbose());
-            service.setBuildListener(listener);
-            try {
+        	WebSphereDeploymentService service = new WebSphereDeploymentService();
+            try {            	
                 EnvVars env = build.getEnvironment(listener);
-                connect(listener, service, env);
+                preInitializeService(listener,service, env);  
+            	service.connect();                	               
                 for(FilePath path:gatherArtifactPaths(build, listener)) {
-                    Artifact artifact = createArtifact(path,listener,service);
+                    Artifact artifact = createArtifact(path,listener,service);                    
                     stopArtifact(artifact.getAppName(),listener,service);
                     if(getOperations().equals(OPERATION_REINSTALL)) {
                     	uninstallArtifact(artifact.getAppName(),listener,service);
@@ -229,7 +213,7 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     private void deployArtifact(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) throws Exception {
         listener.getLogger().println("Deploying '" + artifact.getAppName() + "' to IBM WebSphere Application Server");
-        service.installArtifact(artifact, getDeploymentOptions());
+        service.installArtifact(artifact);
     }
 
     private void uninstallArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
@@ -258,19 +242,9 @@ public class WebSphereDeployerPlugin extends Notifier {
     private void updateArtifact(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) throws Exception {
         if(service.isArtifactInstalled(artifact.getAppName())) {
             listener.getLogger().println("Updating '" + artifact.getAppName() + "' on IBM WebSphere Application Server");
-            service.updateArtifact(artifact, getDeploymentOptions());
+            service.updateArtifact(artifact);
         }
-    }   
-    
-    private HashMap<String,Object> getDeploymentOptions() {
-        HashMap<String,Object> options = new HashMap<String, Object>();
-        options.put(AppConstants.APPDEPL_JSP_RELOADENABLED,isReloading());
-        options.put(AppConstants.APPDEPL_PRECOMPILE_JSP,isPrecompile());
-        if(getClassLoaderPolicy() != null && !getClassLoaderPolicy().trim().equals("")) {
-            options.put(AppConstants.APPDEPL_CLASSLOADINGMODE, getClassLoaderPolicy());
-        }
-        return options;
-    }
+    }      
 
     private Artifact createArtifact(FilePath path,BuildListener listener,WebSphereDeploymentService service) {
         Artifact artifact = new Artifact();
@@ -279,6 +253,15 @@ public class WebSphereDeployerPlugin extends Notifier {
         } else if(path.getRemote().endsWith(".war")) {
             artifact.setType(Artifact.TYPE_WAR);
         }
+        if(StringUtils.trimToNull(context) != null) {
+        	artifact.setContext(context);
+        }        
+        artifact.setClassLoaderOrder(classLoaderOrder);
+        artifact.setClassLoaderPolicy(classLoaderPolicy);
+        artifact.setTargets(targets);
+        artifact.setInstallPath(installPath);
+        artifact.setJspReloading(reloading);
+        artifact.setDistribute(distribute);
         artifact.setPrecompile(isPrecompile());
         artifact.setSourcePath(new File(path.getRemote()));
         artifact.setAppName(getAppName(artifact,service));
@@ -304,22 +287,19 @@ public class WebSphereDeployerPlugin extends Notifier {
         return paths;
     }
 
-    private void connect(BuildListener listener,WebSphereDeploymentService service,EnvVars env) throws Exception {
+    private void preInitializeService(BuildListener listener,WebSphereDeploymentService service,EnvVars env) throws Exception {
         listener.getLogger().println("Connecting to IBM WebSphere Application Server...");
+        service.setVerbose(isVerbose());
+        service.setBuildListener(listener);;
         service.setConnectorType(getConnectorType());
         service.setHost(env.expand(getIpAddress()));
         service.setPort(env.expand(getPort()));
-        service.setUsername(env.expand(getUsername()));
-        service.setPassword(env.expand(getPassword()));
-        service.setKeyStoreLocation(new File(env.expand(getClientKeyFile())));
-        service.setKeyStorePassword(env.expand(getClientKeyPassword()));
-        service.setTrustStoreLocation(new File(env.expand(getClientTrustFile())));
-        service.setTrustStorePassword(env.expand(getClientTrustPassword()));
-        service.setTargetCell(env.expand(getCell()));
-        service.setTargetNode(env.expand(getNode()));
-        service.setTargetServer(env.expand(getServer()));
-        service.setTargetCluster(env.expand(getCluster()));
-        service.connect();
+        service.setUsername(env.expand(security.getUsername()));
+        service.setPassword(env.expand(security.getPassword()));
+        service.setKeyStoreLocation(new File(env.expand(security.getClientKeyFile())));
+        service.setKeyStorePassword(env.expand(security.getClientKeyPassword()));
+        service.setTrustStoreLocation(new File(env.expand(security.getClientTrustFile())));
+        service.setTrustStorePassword(env.expand(security.getClientTrustPassword()));
     }
 
     private String getAppName(Artifact artifact,WebSphereDeploymentService service) {
@@ -345,10 +325,6 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     public BuildStepMonitor getRequiredMonitorService() {
         return BuildStepMonitor.BUILD;
-    }
-
-    public String getClassLoaderPolicy() {
-        return classLoaderPolicy;
     }
 
     @Extension

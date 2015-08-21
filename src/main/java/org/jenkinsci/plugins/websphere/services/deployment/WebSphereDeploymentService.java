@@ -8,23 +8,27 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.Set;
+import java.util.StringTokenizer;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
+import javax.enterprise.deploy.spi.Target;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotificationFilterSupport;
 import javax.management.ObjectName;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -50,10 +54,6 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 
     private AdminClient client;
     private String connectorType;
-    private String targetCluster;
-    private String targetServer;
-    private String targetNode;
-    private String targetCell;
     private boolean verbose;
     private BuildListener buildListener;
 
@@ -62,19 +62,32 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         	if(!isConnected()) {
         		throw new DeploymentServiceException("Cannot list servers, please connect to WebSphere first");
         	}
-            ObjectName jvmQuery = new ObjectName("WebSphere:*,type=Server");
-            Set<ObjectName> response = client.queryNames(jvmQuery, null);
+            ObjectName targetQuery = new ObjectName("WebSphere:*,type=J2EEAppDeployment");
+            Set<ObjectName> appDeployments = client.queryNames(targetQuery, null);
             List<Server> servers = new ArrayList<Server>();
-            for(ObjectName serverObjectName:response) {
-                Server server = new Server();
-                server.setCellName(String.valueOf(client.getAttribute(serverObjectName,"cellName")));
-                server.setNodeName(String.valueOf(client.getAttribute(serverObjectName,"nodeName")));
-                server.setServerName(String.valueOf(client.getAttribute(serverObjectName, "name")));
-                server.setProcessId(String.valueOf(client.getAttribute(serverObjectName, "pid")));
-                server.setServerVendor(String.valueOf(client.getAttribute(serverObjectName, "serverVendor")));
-                server.setServerVersion(String.valueOf(client.getAttribute(serverObjectName, "serverVersion")));
-                servers.add(server);
-            }
+            for(ObjectName appDeployment:appDeployments) {
+            	//reference: http://www-01.ibm.com/support/knowledgecenter/SSEQTP_8.5.5/com.ibm.websphere.wlp.doc/ae/rwlp_mbeans_operation.html?cp=SSEQTP_8.5.5%2F1-3-11-0-3-2-14-2-1
+            	Target[] targets = (Target[])client.invoke(appDeployment, "getTargets", new Object[]{
+            			null,
+            			null
+            	}, new String[] {
+            			Hashtable.class.getName(),
+            			String.class.getName()
+            	});
+            	for(Target target:targets) {
+            		if(target.getName().contains("J2EEServer")) { //only J2EE servers can be deployed to
+            			Server server = new Server();
+            			server.setObjectName(target.getName());
+            			server.setTarget(getFormattedTarget(target.getName()));
+            			servers.add(server);
+            		}
+            	}
+            	Collections.sort(servers);
+            	int i=0;
+            	for(Server server:servers) {
+            		server.setIndex(i++); //set index after sort
+            	}
+            }            
             return servers;
         } catch(Exception e) {
             e.printStackTrace();
@@ -111,6 +124,9 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
      */
     private String getContextRoot(Artifact artifact) {
         try {
+        	if(artifact.getContext() != null) {
+        		return artifact.getContext();
+        	}
             // open WAR and find ibm-web-ext.xml
             ZipFile zipFile = new ZipFile(artifact.getSourcePath());
             ZipEntry webExt = zipFile.getEntry("WEB-INF/ibm-web-ext.xml");
@@ -145,7 +161,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         String warName = artifact.getSourcePath().getName();
         return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                                 "<application xmlns=\"http://java.sun.com/xml/ns/javaee\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "+getSchemaVersion(earLevel)+">\n" +
-                                "  <description>"+warName+"</description>\n" +
+                                "  <description>"+warName+" was deployed using WebSphere Deployer Plugin</description>\n" +
                                 "  <display-name>"+warName+"</display-name>\n" +
                                 "  <module>\n" +
                                 "    <web>\n" +
@@ -193,20 +209,10 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         }
     }
     
-    private Hashtable<String,Object> buildDeploymentPreferences(Artifact artifact,HashMap<String,Object> options) throws Exception {
+    private Hashtable<String,Object> buildDeploymentPreferences(Artifact artifact) throws Exception {
         Hashtable<String,Object> preferences = new Hashtable<String,Object>();
         preferences.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
-
-        Properties defaultBinding = new Properties();
-        preferences.put(AppConstants.APPDEPL_DFLTBNDG, defaultBinding);
-        if(options.containsKey(AppConstants.APPDEPL_DFLTBNDG_VHOST)) {
-            defaultBinding.put(AppConstants.APPDEPL_DFLTBNDG_VHOST, options.get(AppConstants.APPDEPL_DFLTBNDG_VHOST));
-        }
-
-        if(options.containsKey(AppConstants.APPDEPL_CLASSLOADINGMODE)) {
-            defaultBinding.put(AppConstants.APPDEPL_CLASSLOADINGMODE,options.get(AppConstants.APPDEPL_CLASSLOADINGMODE));
-        }
-
+        preferences.put(AppConstants.APPDEPL_DFLTBNDG, new Properties());
         AppDeploymentController controller = AppDeploymentController.readArchive(artifact.getSourcePath().getAbsolutePath(), preferences);
         
         String[] validationResult = controller.validate();
@@ -219,19 +225,47 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         preferences.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
         preferences.put(AppConstants.APPDEPL_ARCHIVE_UPLOAD, Boolean.TRUE);
         preferences.put(AppConstants.APPDEPL_PRECOMPILE_JSP, artifact.isPrecompile());
+        preferences.put(AppConstants.APPDEPL_DISTRIBUTE_APP, artifact.isDistribute());
+        preferences.put(AppConstants.APPDEPL_JSP_RELOADENABLED, artifact.isJspReloading());
+        preferences.put(AppConstants.APPDEPL_RELOADENABLED, artifact.isReloading());
+        if(!artifact.isJspReloading()) {        	
+        	preferences.put(AppConstants.APPDEPL_JSP_RELOADINTERVAL, new Integer(0));
+        } else {
+        	preferences.put(AppConstants.APPDEPL_JSP_RELOADINTERVAL, new Integer(15));
+        }
+        if(!artifact.isReloading()) {
+        	preferences.put(AppConstants.APPDEPL_RELOADINTERVAL, new Integer(0));
+        } else {        	
+        	preferences.put(AppConstants.APPDEPL_RELOADINTERVAL, new Integer(15));
+        }
+        if(StringUtils.trimToNull(artifact.getInstallPath()) != null) {
+        	preferences.put(AppConstants.APPDEPL_INSTALL_DIR, artifact.getInstallPath());	
+        }        
+        if(StringUtils.trimToNull(artifact.getClassLoaderOrder()) != null) {
+        	preferences.put(AppConstants.APPDEPL_CLASSLOADINGMODE,artifact.getClassLoaderOrder());
+        }          
+        if(StringUtils.trimToNull(artifact.getClassLoaderPolicy()) != null) {
+        	preferences.put(AppConstants.APPDEPL_CLASSLOADERPOLICY,artifact.getClassLoaderPolicy());
+        }
+        if(artifact.getContext() != null) {
+        	buildListener.getLogger().println("Setting context root to: "+artifact.getContext());
+        	preferences.put(AppConstants.APPDEPL_WEBMODULE_CONTEXTROOT, artifact.getContext());
+        	preferences.put(AppConstants.APPDEPL_WEB_CONTEXTROOT, artifact.getContext());
+        }  
 
         Hashtable<String,Object> module2server = new Hashtable<String,Object>();
-        module2server.put("*", getTarget());
+        buildListener.getLogger().println("Deploying to targets: "+getFormattedTargets(artifact.getTargets()));
+        module2server.put("*", getFormattedTargets(artifact.getTargets()));
         preferences.put(AppConstants.APPDEPL_MODULE_TO_SERVER, module2server);    	
         return preferences;
     }
 
-    public void installArtifact(Artifact artifact,HashMap<String,Object> options) {
+    public void installArtifact(Artifact artifact) {
         if(!isConnected()) {
             throw new DeploymentServiceException("Cannot install artifact, no connection to IBM WebSphere Application Server exists");
         }
         try {        	
-        	Hashtable<String,Object> preferences = buildDeploymentPreferences(artifact, options);            
+        	Hashtable<String,Object> preferences = buildDeploymentPreferences(artifact);            
             AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());           
             appManagementProxy.installApplication(artifact.getSourcePath().getAbsolutePath(),artifact.getAppName(),preferences, null);
             
@@ -251,12 +285,12 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         }
     }
     
-	public void updateArtifact(Artifact artifact,HashMap<String, Object> options) {
+	public void updateArtifact(Artifact artifact) {
         if(!isConnected()) {
             throw new DeploymentServiceException("Cannot update artifact, no connection to IBM WebSphere Application Server exists");
         }		
         try {
-        	Hashtable<String,Object> preferences = buildDeploymentPreferences(artifact, options);
+        	Hashtable<String,Object> preferences = buildDeploymentPreferences(artifact);
             
             AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
             
@@ -374,17 +408,15 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 
     public void connect() throws Exception {
         if(isConnected()) {
-            System.out.println("WARNING: Already connected to WebSphere Application Server");
+        	log.warning("Already connected to WebSphere Application Server");
         }
-        System.setProperty("com.ibm.ssl.performURLHostNameVerification", "false");
         Properties config = new Properties();
         config.put (AdminClient.CONNECTOR_HOST, getHost());
         config.put (AdminClient.CONNECTOR_PORT, getPort());
         if(StringUtils.trimToNull(getUsername()) != null) {
             injectSecurityConfiguration(config);
         }
-        config.put(AdminClient.AUTH_TARGET, getTarget());
-        config.put (AdminClient.CONNECTOR_TYPE, getConnectorType());
+        config.put(AdminClient.CONNECTOR_TYPE, getConnectorType());
         client = AdminClientFactory.createAdminClient(config);
         if(client == null) {
             throw new DeploymentServiceException("Unable to connect to IBM WebSphere Application Server @ "+getHost()+":"+getPort());
@@ -429,81 +461,46 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         config.put(AdminClient.USERNAME, getUsername());
         config.put(AdminClient.PASSWORD, getPassword());
 
-        config.put("com.ibm.ssl.trustStore", getTrustStoreLocation().getAbsolutePath());
-        config.put("javax.net.ssl.trustStore", getTrustStoreLocation().getAbsolutePath());
+        if(getTrustStoreLocation() != null) {
+	        config.put("com.ibm.ssl.trustStore", getTrustStoreLocation().getAbsolutePath());
+	        config.put("javax.net.ssl.trustStore", getTrustStoreLocation().getAbsolutePath());
+        }
 
-        config.put("com.ibm.ssl.keyStore", getKeyStoreLocation().getAbsolutePath());
-        config.put("javax.net.ssl.keyStore", getKeyStoreLocation().getAbsolutePath());
+        if(getKeyStoreLocation() != null) {
+        	config.put("com.ibm.ssl.keyStore", getKeyStoreLocation().getAbsolutePath());
+        	config.put("javax.net.ssl.keyStore", getKeyStoreLocation().getAbsolutePath());
+        }
 
-        config.put("com.ibm.ssl.trustStorePassword", getTrustStorePassword());
-        config.put("javax.net.ssl.trustStorePassword",getTrustStorePassword());
+        if(getTrustStorePassword() != null) {
+        	config.put("com.ibm.ssl.trustStorePassword", getTrustStorePassword());
+        	config.put("javax.net.ssl.trustStorePassword",getTrustStorePassword());
+        }
 
-        config.put("com.ibm.ssl.keyStorePassword", getKeyStorePassword());
-        config.put("javax.net.ssl.keyStorePassword", getKeyStorePassword());
-    }
-
-    private String getTarget() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("WebSphere:");
-        appendTarget(builder,"cluster=",getTargetCluster());
-        appendTarget(builder,"cell=",getTargetCell());
-        appendTarget(builder,"node=",getTargetNode());
-        appendTarget(builder,"server=",getTargetServer());
-        return builder.toString();
-    }
-
-    private void appendTarget(StringBuilder builder,String target,String value) {
-        if(StringUtils.trimToNull(value) != null) {
-            if(!isFirstTarget(builder)) {
-                builder.append(",");
-            }
-            builder.append(target);
-            builder.append(value);
+        if(getKeyStorePassword() != null) {
+        	config.put("com.ibm.ssl.keyStorePassword", getKeyStorePassword());
+        	config.put("javax.net.ssl.keyStorePassword", getKeyStorePassword());
         }
     }
 
-    private boolean isFirstTarget(StringBuilder builder) {
-        return builder.toString().endsWith(":");
+    private String getFormattedTargets(String targets) {
+    	List<String> result = new ArrayList<String>();
+    	for(StringTokenizer st = new StringTokenizer(targets.trim(),"\r\n");st.hasMoreTokens();) {
+    		result.add(st.nextToken());
+    	}    	
+        return StringUtils.join(result,"+");
     }
-
+    
+    private String getFormattedTarget(String target) {
+    	target = target.replace("WebSphere:","").replace(",j2eeType=J2EEServer",""); //remove 'WebSphere:' & 'j2eeType' to work on comma delimited array
+    	String[] elements = target.split(",");
+    	ArrayUtils.reverse(elements);
+    	return "WebSphere:"+StringUtils.join(elements,",");
+    }
     public void setConnectorType(String type) {
         this.connectorType = type;
     }
-
     public String getConnectorType() {
         return this.connectorType;
-    }
-
-    public String getTargetCluster() {
-        return targetCluster;
-    }
-
-    public void setTargetCluster(String targetCluster) {
-        this.targetCluster = targetCluster;
-    }
-
-    public String getTargetServer() {
-        return targetServer;
-    }
-
-    public void setTargetServer(String targetServer) {
-        this.targetServer = targetServer;
-    }
-
-    public String getTargetNode() {
-        return targetNode;
-    }
-
-    public void setTargetNode(String targetNode) {
-        this.targetNode = targetNode;
-    }
-
-    public String getTargetCell() {
-        return targetCell;
-    }
-
-    public void setTargetCell(String targetCell) {
-        this.targetCell = targetCell;
     }
     public void setVerbose(boolean verbose) {
     	this.verbose = verbose;

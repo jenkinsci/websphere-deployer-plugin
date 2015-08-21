@@ -21,7 +21,7 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
     private JMXConnector connector;
     private MBeanServerConnection client;
 
-    public void installArtifact(Artifact artifact, HashMap<String, Object> options) {
+    public void installArtifact(Artifact artifact) {
         try {
             ObjectName fileTransferServiceMBean = new ObjectName("WebSphere:feature=restConnector,type=FileTransfer,name=FileTransfer");
             if (client.isRegistered(fileTransferServiceMBean)) {
@@ -134,4 +134,9 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
     public boolean isConnected() {
         return connector != null;
     }
+
+	@Override
+	public void updateArtifact(Artifact artifact) {
+		throw new UnsupportedOperationException();
+	}
 }

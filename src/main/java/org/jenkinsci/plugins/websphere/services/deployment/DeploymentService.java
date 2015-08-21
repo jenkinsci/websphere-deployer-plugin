@@ -1,11 +1,11 @@
 package org.jenkinsci.plugins.websphere.services.deployment;
 
 import java.io.File;
-import java.util.HashMap;
 
 public interface DeploymentService {
 
-    void installArtifact(Artifact artifact, HashMap<String, Object> options);
+    void installArtifact(Artifact artifact);
+    void updateArtifact(Artifact artifact);
     void uninstallArtifact(String name) throws Exception;
     void startArtifact(String name) throws Exception;
     void stopArtifact(String name) throws Exception;

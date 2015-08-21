@@ -7,54 +7,60 @@
         <f:entry title="Connector Type" field="connectorType">
             <select name="connectorType">            
                 <option value="SOAP">SOAP</option>
-                <option value="RMI">RMI</option>
-                <option value="JSR160RMI">RMI-JSR160</option>
-                <option value="IPC">IPC</option>
-                <option value="JMS">JMS</option>
             </select>
         </f:entry>
       <f:entry title="Port" field="port">
         <f:textbox/>
       </f:entry>
   </f:section>
-    <f:section title="WebSphere Authentication (if required)">
-          <f:entry title="Username" field="username">
-            <f:textbox />
-          </f:entry>
-          <f:entry title="Password" field="password">
-            <f:password />
-          </f:entry>
-          <f:entry title="Client Keystore File Path" field="clientKeyFile">
-            <f:textbox />
-          </f:entry>
-          <f:entry title="Client Keystore Password" field="clientKeyPassword">
-            <f:password />
-          </f:entry>
-          <f:entry title="Client Truststore File Path" field="clientTrustFile">
-            <f:textbox />
-          </f:entry>
-          <f:entry title="Client Truststore Password" field="clientTrustPassword">
-            <f:password/>
-          </f:entry>
-    </f:section>
+	  <f:optionalBlock field="security" checked="${instance.security != null &amp;&amp; instance.security.username != ''}" title="Connect Using Global Security">
+	      <f:section title="WebSphere Global Security">
+	          <f:entry title="Username" field="username">
+	            <f:textbox value="${instance.security.username}"/>
+	          </f:entry>
+	          <f:entry title="Password" field="password">
+	            <f:password value="${instance.security.password}"/>
+	          </f:entry>
+	          <f:advanced>
+		          <f:entry title="Client Keystore File Path" field="clientKeyFile">
+		            <f:textbox value="${instance.security.clientKeyFile}"/>
+		          </f:entry>
+		          <f:entry title="Client Keystore Password" field="clientKeyPassword">
+		            <f:password value="${instance.security.clientKeyPassword}"/>
+		          </f:entry>
+		          <f:entry title="Client Truststore File Path" field="clientTrustFile">
+		            <f:textbox value="${instance.security.clientTrustFile}"/>
+		          </f:entry>
+		          <f:entry title="Client Truststore Password" field="clientTrustPassword">
+		            <f:password value="${instance.security.clientTrustPassword}"/>
+		          </f:entry>
+	          </f:advanced>
+        </f:section>
+	  </f:optionalBlock>
     <f:validateButton
        title="Test Connection" progress="Connecting..."
-       method="testConnection" with="ipAddress,connectorType,port,username,password,clientKeyFile,clientTrustFile,clientKeyPassword,clientTrustPassword" />
+       method="testConnection" with="ipAddress,connectorType,port,username,password,clientKeyFile,clientTrustFile,clientKeyPassword,clientTrustPassword"/>
     <f:section title="WebSphere Deployment">
+          <f:entry title="Operations" field="operations">
+             <select name="operations">                
+                <j:choose>
+                	<j:when test="${instance.operations == '1' || instance.operations == null}">
+                    	<option value="1">Install/Reinstall Application(s)</option>
+                        <option value="2">Install/Update Application(s)</option>  	
+                	</j:when>
+                    <j:when test="${instance.operations == '2'}">
+                    	<option value="1">Install/Reinstall Application(s)</option>
+                        <option value="2" selected="selected">Install/Update Application(s)</option>  
+                    </j:when>              
+                </j:choose>
+            </select>
+          </f:entry>    
           <f:entry title="EAR/WAR Path" field="artifacts">
             <f:textbox />
           </f:entry>
-          <f:entry title="Target Node" field="node">
-            <f:textbox />
-          </f:entry>
-          <f:entry title="Target Cell" field="cell">
-            <f:textbox />
-          </f:entry>
-          <f:entry title="Target Server" field="server">
-            <f:textbox />
-          </f:entry>
-          <f:entry title="Target Cluster" field="cluster">
-            <f:textbox />
+          <f:entry title="Deployment Targets">
+          	<f:textarea field="targets" default="WebSphere:cell=[cellname],node=[nodeName],server=[serverName]">
+          	</f:textarea>
           </f:entry>
           <f:entry title="Deployment Timeout (minutes)" field="deploymentTimeout">
             <f:textbox />
@@ -80,43 +86,43 @@
                 </j:choose>
             </select>
           </f:entry>
-          <f:entry title="Operations" field="operations">
-             <select name="operations">                
-                <j:choose>
-                	<j:when test="${instance.operations == '1' || instance.operations == null}">
-                    	<option value="1">Install/Reinstall Application(s)</option>
-                        <option value="2">Install/Update Application(s)</option>  	
-                	</j:when>
-                    <j:when test="${instance.operations == '2'}">
-                    	<option value="1">Install/Reinstall Application(s)</option>
-                        <option value="2" selected="selected">Install/Update Application(s)</option>  
-                    </j:when>              
-                </j:choose>
-            </select>
+          <f:entry title="Generated Context" field="context">
+            <f:textbox />
           </f:entry>
+    </f:section>  
+	<f:section title="WebSphere Deployment Options">
+          <f:entry title="Remote App. Install Path" field="installPath">
+            <f:textbox />
+          </f:entry>           
+          <f:entry title="Distribute Application" field="distribute">
+            <f:checkbox checked="${instance.distribute}" default="true"/>
+          </f:entry>                    
           <f:entry title="Precompile JSPs" field="precompile">
             <f:checkbox checked="${instance.precompile}" default="true"/>
           </f:entry>
-          <f:entry title="JSP Reloading" field="reloading">
+          <f:entry title="Reloading" field="reloading">
             <f:checkbox checked="${instance.reloading}" default="true"/>
           </f:entry>
+          <f:entry title="JSP Reloading" field="jspReloading">
+            <f:checkbox checked="${instance.jspReloading}" default="true"/>
+          </f:entry>          
           <f:entry title="Verbose Output" field="verbose">
             <f:checkbox checked="${instance.verbose}" default="false"/>
           </f:entry>          
-          <f:entry title="Application Classloader Policy" field="classLoaderPolicy">
-              <select name="classLoaderPolicy">
+          <f:entry title="Application Class Loader Order" field="classLoaderOrder">
+              <select name="classLoaderOrder">
               	<j:choose>
-              		<j:when test="${instance.classLoaderPolicy == '' || instance.classLoaderPolicy == null}">
+              		<j:when test="${instance.classLoaderOrder == '' || instance.classLoaderOrder == null}">
                   		<option value="">Default</option>
                   		<option value="0">Parent_First</option>
                   		<option value="1">Parent_Last</option>	
                 	</j:when>
-                	<j:when test="${instance.classLoaderPolicy == '0'}">
+                	<j:when test="${instance.classLoaderOrder == '0'}">
                 		<option value="">Default</option>
                   		<option value="0" selected="selected">Parent_First</option>
                   		<option value="1">Parent_Last</option>	
                   	</j:when>
-                  	<j:when test="${instance.classLoaderPolicy == '1'}">
+                  	<j:when test="${instance.classLoaderOrder == '1'}">
                   		<option value="">Default</option>
                   		<option value="0">Parent_First</option>
                   		<option value="1" selected="selected">Parent_Last</option>	
@@ -124,5 +130,26 @@
                  </j:choose>
               </select>
           </f:entry>
+          <f:entry title="Application Class Loader Policy" field="classLoaderPolicy">
+              <select name="classLoaderPolicy">
+              	<j:choose>
+              		<j:when test="${instance.classLoaderPolicy == '' || instance.classLoaderPolicy == null}">
+                  		<option value="">Default</option>
+                  		<option value="0">Multiple Class Loaders</option>
+                  		<option value="1">Single Class Loader</option>                  			
+                	</j:when>
+                	<j:when test="${instance.classLoaderPolicy == '0'}">
+                  		<option value="">Default</option>
+                  		<option value="0" selected="selected">Multiple Class Loaders</option>
+                  		<option value="1">Single Class Loader</option>                  			
+                  	</j:when>
+                  	<j:when test="${instance.classLoaderPolicy == '1'}">
+                  		<option value="">Default</option>
+                  		<option value="0">Multiple Class Loaders</option>
+                  		<option value="1" selected="selected">Single Class Loader</option>
+                  	</j:when>
+                 </j:choose>
+              </select>
+          </f:entry>          
     </f:section>
 </j:jelly>

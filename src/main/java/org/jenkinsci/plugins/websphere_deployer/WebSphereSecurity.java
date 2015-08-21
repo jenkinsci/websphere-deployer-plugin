@@ -14,7 +14,9 @@ public class WebSphereSecurity {
 	private String clientTrustPassword;
 	
 	@DataBoundConstructor
-	public WebSphereSecurity(String username,String password,String clientKeyFile,String clientKeyPassword,String clientTrustFile,String clientTrustPassword) {
+	public WebSphereSecurity(String username, String password,
+			String clientKeyFile, String clientKeyPassword,
+			String clientTrustFile, String clientTrustPassword) {
 		this.username = username;
 		setPassword(password);
 		this.clientKeyFile = clientKeyFile;
@@ -22,41 +24,52 @@ public class WebSphereSecurity {
 		this.clientTrustFile = clientTrustFile;
 		setClientTrustPassword(clientTrustPassword);
 	}
-	
+
 	public String getUsername() {
 		return username;
 	}
+
 	public void setUsername(String username) {
 		this.username = username;
 	}
+
 	public String getPassword() {
 		return Scrambler.descramble(password);
 	}
+
 	public void setPassword(String password) {
 		this.password = Scrambler.scramble(password);
 	}
+
 	public String getClientKeyFile() {
 		return clientKeyFile;
 	}
+
 	public void setClientKeyFile(String clientKeyFile) {
 		this.clientKeyFile = clientKeyFile;
 	}
+
 	public String getClientKeyPassword() {
 		return Scrambler.descramble(clientKeyPassword);
 	}
+
 	public void setClientKeyPassword(String clientKeyPassword) {
 		this.clientKeyPassword = Scrambler.scramble(clientKeyPassword);
 	}
+
 	public String getClientTrustFile() {
 		return clientTrustFile;
 	}
+
 	public void setClientTrustFile(String clientTrustFile) {
 		this.clientTrustFile = clientTrustFile;
 	}
+
 	public String getClientTrustPassword() {
 		return Scrambler.descramble(clientTrustPassword);
 	}
+
 	public void setClientTrustPassword(String clientTrustPassword) {
 		this.clientTrustPassword = Scrambler.scramble(clientTrustPassword);
-	}	
+	}
 }

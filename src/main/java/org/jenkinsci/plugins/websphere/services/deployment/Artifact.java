@@ -21,6 +21,26 @@ public class Artifact {
     private String classLoaderOrder;
     private String classLoaderPolicy;
     
+    public String getTypeName() {
+    	switch(type) {
+	    	case TYPE_EAR: {
+	    		return "ear";	
+	    	}
+	    	case TYPE_WAR: {
+	    		return "war";
+	    	}
+	    	case TYPE_JAR: {
+	    		return "jar";
+	    	}
+	    	case TYPE_RAR: {
+	    		return "rar";
+	    	}
+	    	default: {
+	    		return "ear";
+	    	}
+    	}
+    }
+    
 	public String getClassLoaderOrder() {
 		return classLoaderOrder;
 	}

@@ -9,7 +9,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Locale;
@@ -159,10 +158,14 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     private String getApplicationXML(Artifact artifact,String earLevel) {
         String contextRoot = getContextRoot(artifact);
         String warName = artifact.getSourcePath().getName();
+        String displayName = StringUtils.trimToNull(artifact.getAppName());
+        if(displayName == null) {
+        	displayName = warName;
+        }        
         return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                                 "<application xmlns=\"http://java.sun.com/xml/ns/javaee\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "+getSchemaVersion(earLevel)+">\n" +
                                 "  <description>"+warName+" was deployed using WebSphere Deployer Plugin</description>\n" +
-                                "  <display-name>"+warName+"</display-name>\n" +
+                                "  <display-name>"+displayName+"</display-name>\n" +
                                 "  <module>\n" +
                                 "    <web>\n" +
                                 "      <web-uri>"+warName+"</web-uri>\n" +
@@ -237,6 +240,9 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         	preferences.put(AppConstants.APPDEPL_RELOADINTERVAL, new Integer(0));
         } else {        	
         	preferences.put(AppConstants.APPDEPL_RELOADINTERVAL, new Integer(15));
+        }
+        if(StringUtils.trimToNull(artifact.getAppName()) != null) {
+        	preferences.put(AppConstants.APPDEPL_APPNAME, artifact.getAppName());
         }
         if(StringUtils.trimToNull(artifact.getInstallPath()) != null) {
         	preferences.put(AppConstants.APPDEPL_INSTALL_DIR, artifact.getInstallPath());	
@@ -339,39 +345,37 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
     
     public void startArtifact(String appName, int deploymentTimeout) throws Exception {
-		try {
-			NotificationFilterSupport filterSupport = createFilterSupport();
-			AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
-			DeploymentNotificationListener distributionListener = null;
-			int checkCount = 0;
-
-			int secsToWait = deploymentTimeout * 60;
-
-			while (checkDistributionStatus(distributionListener) != AppNotification.DISTRIBUTION_DONE && ++checkCount < secsToWait) {
-				Thread.sleep(1000);
-				
-				distributionListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, null,AppNotification.DISTRIBUTION_STATUS_NODE,buildListener,verbose);
-
-				synchronized (distributionListener) {
-					appManagementProxy.getDistributionStatus(appName,new Hashtable<Object, Object>(), null);
-					distributionListener.wait();
-				}
-			}
-
-			if (checkCount <= secsToWait) {
+		try {			
+			AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());			
+			if(waitForApplicationDistribution(appManagementProxy, appName, deploymentTimeout * 60)) {
 				String targetsStarted = appManagementProxy.startApplication(appName, null, null);
 				log.info("Application was started on the following targets: "+ targetsStarted);
 				if (targetsStarted == null) {
-					throw new DeploymentServiceException("Start of the application was not successful. WAS JVM logs should contain the detailed error message.");
+					throw new DeploymentServiceException("Application did not start successfully. WAS JVM logs should contain more detailed information.");
 				}
 			} else {
 				throw new DeploymentServiceException("Distribution of application did not succeed on all nodes.");
 			}
-			AppManagementProxy.getJMXProxyForClient(getAdminClient()).startApplication(appName, new Hashtable(), null);
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new DeploymentServiceException("Could not start artifact '"+ appName + "': " + e.toString());
 		}
+    }
+    
+    private boolean waitForApplicationDistribution(AppManagement appManagementProxy,String appName,int secondsToWait) throws Exception {
+    	int totalSeconds = 0;
+    	NotificationFilterSupport filterSupport = createFilterSupport();
+    	DeploymentNotificationListener distributionListener = null;
+		while (checkDistributionStatus(distributionListener) != AppNotification.DISTRIBUTION_DONE && totalSeconds < secondsToWait) {
+			Thread.sleep(1000);			
+			totalSeconds++;
+			distributionListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, null,AppNotification.DISTRIBUTION_STATUS_NODE,buildListener,verbose);
+			synchronized (distributionListener) {
+				appManagementProxy.getDistributionStatus(appName,new Hashtable<Object, Object>(), null);
+				distributionListener.wait();
+			}
+		}    	
+		return totalSeconds <= secondsToWait;
     }
 
     public void stopArtifact(String appName) throws Exception {

@@ -18,9 +18,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 
 import javax.servlet.ServletException;
 
@@ -28,13 +25,11 @@ import net.sf.json.JSONObject;
 
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.websphere.services.deployment.Artifact;
-import org.jenkinsci.plugins.websphere.services.deployment.Server;
+import org.jenkinsci.plugins.websphere.services.deployment.DeploymentServiceException;
 import org.jenkinsci.plugins.websphere.services.deployment.WebSphereDeploymentService;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
-
-import com.ibm.websphere.management.application.AppConstants;
 
 /**
  * A Jenkins plugin for deploying to WebSphere either locally or remotely.
@@ -56,11 +51,13 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final String context;
     private final String installPath;
     private final String targets;
+    private final String applicationName;
     private final boolean precompile;
     private final boolean reloading;
     private final boolean jspReloading;
     private final boolean verbose;
     private final boolean distribute;
+    private final boolean rollback;
     private final WebSphereSecurity security;
 
     @DataBoundConstructor
@@ -75,11 +72,13 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    String operations,
                                    String context,
                                    String targets,
+                                   String applicationName,
                                    boolean precompile,
                                    boolean reloading,
                                    boolean jspReloading,
                                    boolean verbose,
                                    boolean distribute,
+                                   boolean rollback,
                                    String classLoaderPolicy,
                                    String classLoaderOrder) {
     	this.context = context;
@@ -97,13 +96,19 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.jspReloading = jspReloading;
         this.verbose = verbose;
         this.distribute = distribute;
+        this.rollback = rollback;
         this.security = security;
         this.classLoaderPolicy = classLoaderPolicy;
         this.classLoaderOrder = classLoaderOrder;
+        this.applicationName = applicationName;
     }
     
     public String getClassLoaderOrder() {
     	return classLoaderOrder;
+    }
+    
+    public String getApplicationName() {
+    	return applicationName;
     }
     
     public String getClassLoaderPolicy() {
@@ -140,6 +145,10 @@ public class WebSphereDeployerPlugin extends Notifier {
     
     public boolean isVerbose() {
     	return verbose;
+    }
+    
+    public boolean isRollback() {
+    	return rollback;
     }
 
     public String getIpAddress() {
@@ -178,12 +187,13 @@ public class WebSphereDeployerPlugin extends Notifier {
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
         if(build.getResult().equals(Result.SUCCESS)) {
         	WebSphereDeploymentService service = new WebSphereDeploymentService();
+        	Artifact artifact = null;
             try {            	
                 EnvVars env = build.getEnvironment(listener);
                 preInitializeService(listener,service, env);  
             	service.connect();                	               
                 for(FilePath path:gatherArtifactPaths(build, listener)) {
-                    Artifact artifact = createArtifact(path,listener,service);                    
+                    artifact = createArtifact(path,listener,service);                    
                     stopArtifact(artifact.getAppName(),listener,service);
                     if(getOperations().equals(OPERATION_REINSTALL)) {
                     	uninstallArtifact(artifact.getAppName(),listener,service);
@@ -196,19 +206,89 @@ public class WebSphereDeployerPlugin extends Notifier {
                     	}
                     }
                     startArtifact(artifact.getAppName(),listener,service);
+                    if(rollback) {
+                    	saveArtifactToRollbackRepository(build, listener, artifact);
+                    }
                 }
             } catch (Exception e) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
-                e.printStackTrace();
                 PrintStream p = new PrintStream(out);
                 e.printStackTrace(p);
-                listener.getLogger().println("Error deploying to IBM WebSphere Application Server: "+new String(out.toByteArray()));
+                if(verbose) {
+                	logVerbose(listener,"Error deploying to IBM WebSphere Application Server: "+new String(out.toByteArray()));
+                } else {
+                	log(listener,"Error deploying to IBM WebSphere Application Server: "+e.getMessage());
+                }
+                rollbackArtifact(service,build,listener,artifact);
                 build.setResult(Result.FAILURE);
             } finally {
                 service.disconnect();
             }
+        } else {
+        	listener.getLogger().println("Unable to deploy to IBM WebSphere Application Server, Build Result = FAILURE");
+        	build.setResult(Result.FAILURE);
         }
         return true;
+    }
+    
+    private void log(BuildListener listener,String data) {
+		listener.getLogger().println(data);
+    }
+    
+    private void logVerbose(BuildListener listener,String data) {
+    	if(verbose) {
+    		log(listener,data);
+    	}
+    }
+    
+    private void rollbackArtifact(WebSphereDeploymentService service,AbstractBuild build,BuildListener listener,Artifact artifact) {    	    	
+    	if(artifact == null) {
+    		log(listener,"Cannot rollback to previous version: artifact is null");
+    		return;
+    	}
+    	log(listener,"Performing rollback of '"+artifact.getAppName()+"'");    	
+    	File installablePath = new File(build.getWorkspace().getRemote()+File.separator+"Rollbacks"+File.separator+artifact.getAppName()+"."+artifact.getTypeName());    	
+    	if(installablePath.exists()) {
+    		artifact.setSourcePath(installablePath);
+    		try {
+    			updateArtifact(artifact, listener, service);
+    			startArtifact(artifact.getAppName(),listener,service);
+    			log(listener,"Rollback of '"+artifact.getAppName()+"' was successful");
+    		} catch(Exception e) {
+    			e.printStackTrace();
+    			log(listener, "Error while trying to rollback to previous version: "+e.getMessage());
+    		}
+    	} else {
+    		log(listener,"WARNING: Artifact doesn't exist rollback repository");
+    	}
+    }
+    
+    private void saveArtifactToRollbackRepository(AbstractBuild build,BuildListener listener,Artifact artifact) {
+    	listener.getLogger().println("Performing save operations on '" + artifact.getAppName() + "' for future rollbacks");
+    	File rollbackDir = new File(build.getWorkspace().getRemote()+File.separator+"Rollbacks");
+    	createIfNotExists(listener, rollbackDir);
+    	logVerbose(listener, "Rollback Path: "+rollbackDir.getAbsolutePath());
+    	File destination = new File(rollbackDir,artifact.getAppName()+"."+artifact.getTypeName());
+    	if(destination.exists()) {
+    		log(listener, "Deleting old rollback version...");	
+    		if(!destination.delete()) {
+    			log(listener, "Failed to delete old rollback version, permissions?: "+destination.getAbsolutePath());
+    			return;
+    		}
+    	}
+    	log(listener, "Saving new rollback version...");
+    	if(!artifact.getSourcePath().renameTo(destination)) { 
+    		logVerbose(listener, "Failed to save '"+artifact.getAppName() +"' to rollback repository");
+    	} else {
+    		log(listener,"Saved '"+artifact.getAppName()+"' to rollback repository");
+    	}
+    }
+    
+    private void createIfNotExists(BuildListener listener,File directory) {
+    	if(directory.exists() || directory.mkdir()) {
+    		return;
+    	}
+    	throw new DeploymentServiceException("Failed to create directory, is write access allowed?: "+directory.getAbsolutePath());
     }
 
     private void deployArtifact(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) throws Exception {
@@ -255,7 +335,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         }
         if(StringUtils.trimToNull(context) != null) {
         	artifact.setContext(context);
-        }        
+        }                
         artifact.setClassLoaderOrder(classLoaderOrder);
         artifact.setClassLoaderPolicy(classLoaderPolicy);
         artifact.setTargets(targets);
@@ -264,7 +344,11 @@ public class WebSphereDeployerPlugin extends Notifier {
         artifact.setDistribute(distribute);
         artifact.setPrecompile(isPrecompile());
         artifact.setSourcePath(new File(path.getRemote()));
-        artifact.setAppName(getAppName(artifact,service));
+        if(StringUtils.trimToNull(applicationName) != null) {
+        	artifact.setAppName(applicationName);
+        } else {
+        	artifact.setAppName(getAppName(artifact,service));
+        }
         if(artifact.getType() == Artifact.TYPE_WAR) {
             generateEAR(artifact, listener, service);
         }
@@ -380,6 +464,14 @@ public class WebSphereDeployerPlugin extends Notifier {
             if (value.length() > 5)
                 return FormValidation.warning("Cannot be greater than 65535");
             return FormValidation.ok();
+        }
+        
+        public FormValidation doCheckApplicationName(@QueryParameter String value) throws IOException, ServletException {
+        	if(StringUtils.trimToNull(value) == null) {
+        		return FormValidation.warning("This setting is required for rollback support");
+        	} else {
+        		return FormValidation.ok();
+        	}
         }
 
         public FormValidation doCheckAdminClientPath(@QueryParameter String value)

@@ -54,7 +54,13 @@
                     </j:when>              
                 </j:choose>
             </select>
-          </f:entry>    
+          </f:entry>  
+          <f:entry title="Rollback On Error" field="rollback">
+            <f:checkbox checked="${instance.rollback}" default="false"/>
+          </f:entry>
+          <f:entry title="Application Name" field="applicationName">
+            <f:textbox />
+          </f:entry>                        
           <f:entry title="EAR/WAR Path" field="artifacts">
             <f:textbox />
           </f:entry>

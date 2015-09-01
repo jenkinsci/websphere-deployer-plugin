@@ -100,6 +100,9 @@
           <f:entry title="Remote App. Install Path" field="installPath">
             <f:textbox />
           </f:entry>           
+          <f:entry title="Deploy if build is unstable" field="unstableDeploy">
+            <f:checkbox checked="${instance.unstableDeploy}" default="true"/>
+          </f:entry>
           <f:entry title="Distribute Application" field="distribute">
             <f:checkbox checked="${instance.distribute}" default="true"/>
           </f:entry>                    

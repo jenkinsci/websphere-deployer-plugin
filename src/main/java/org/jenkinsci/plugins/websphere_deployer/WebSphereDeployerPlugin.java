@@ -58,6 +58,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final boolean verbose;
     private final boolean distribute;
     private final boolean rollback;
+    private final boolean unstableDeploy;
     private final WebSphereSecurity security;
 
     @DataBoundConstructor
@@ -79,6 +80,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    boolean verbose,
                                    boolean distribute,
                                    boolean rollback,
+                                   boolean unstableDeploy,
                                    String classLoaderPolicy,
                                    String classLoaderOrder) {
     	this.context = context;
@@ -97,6 +99,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.verbose = verbose;
         this.distribute = distribute;
         this.rollback = rollback;
+        this.unstableDeploy = unstableDeploy;
         this.security = security;
         this.classLoaderPolicy = classLoaderPolicy;
         this.classLoaderOrder = classLoaderOrder;
@@ -151,6 +154,10 @@ public class WebSphereDeployerPlugin extends Notifier {
     	return rollback;
     }
 
+    public boolean isUnstableDeploy() {
+        return unstableDeploy;
+    }
+
     public String getIpAddress() {
         return ipAddress;
     }
@@ -185,7 +192,7 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
-        if(build.getResult().equals(Result.SUCCESS)) {
+        if(shouldDeploy(build.getResult())) {
         	WebSphereDeploymentService service = new WebSphereDeploymentService();
         	Artifact artifact = null;
             try {            	
@@ -225,10 +232,15 @@ public class WebSphereDeployerPlugin extends Notifier {
                 service.disconnect();
             }
         } else {
-        	listener.getLogger().println("Unable to deploy to IBM WebSphere Application Server, Build Result = FAILURE");
-        	build.setResult(Result.FAILURE);
+            listener.getLogger().println("Unable to deploy to IBM WebSphere Application Server, Build Result = " + build.getResult());
         }
         return true;
+    }
+
+    private boolean shouldDeploy(Result result) {
+        if (result.equals(Result.SUCCESS)) return true;
+        if (unstableDeploy && result.equals(Result.UNSTABLE)) return true;
+        return false;
     }
     
     private void log(BuildListener listener,String data) {

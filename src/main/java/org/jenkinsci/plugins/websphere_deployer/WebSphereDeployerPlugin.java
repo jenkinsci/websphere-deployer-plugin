@@ -225,8 +225,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                 service.disconnect();
             }
         } else {
-        	listener.getLogger().println("Unable to deploy to IBM WebSphere Application Server, Build Result = FAILURE");
-        	build.setResult(Result.FAILURE);
+            listener.getLogger().println("Unable to deploy to IBM WebSphere Application Server, Build Result = " + build.getResult());
         }
         return true;
     }

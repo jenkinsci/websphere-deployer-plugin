@@ -1,5 +1,6 @@
 package org.jenkinsci.plugins.websphere.services.deployment;
 
+import com.ibm.ws.management.AdminClientImpl;
 import hudson.model.BuildListener;
 
 import java.io.File;
@@ -428,15 +429,6 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
 
     public void disconnect() {
-		System.clearProperty("javax.net.ssl.trustStore");
-		System.clearProperty("javax.net.ssl.keyStore");
-		System.clearProperty("javax.net.ssl.trustStorePassword");
-		System.clearProperty("javax.net.ssl.keyStorePassword");
-		System.clearProperty("com.ibm.ssl.trustStore");
-		System.clearProperty("com.ibm.ssl.keyStore");
-		System.clearProperty("com.ibm.ssl.trustStorePassword");
-		System.clearProperty("com.ibm.ssl.keyStorePassword");
-		System.clearProperty("com.ibm.ssl.performURLHostNameVerification");
     	if(client != null) {
     		client.getConnectorProperties().clear();
     		client = null;

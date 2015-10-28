@@ -1,6 +1,5 @@
 package org.jenkinsci.plugins.websphere.services.deployment;
 
-import com.ibm.ws.management.AdminClientImpl;
 import hudson.model.BuildListener;
 
 import java.io.File;
@@ -56,6 +55,14 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     private String connectorType;
     private boolean verbose;
     private BuildListener buildListener;
+    /**
+     * This is used to prevent weird behaviors caused by IBM wsadmin that overrides
+     * system properties.
+     *
+     * @see <a href="https://github.com/jenkinsci/websphere-deployer-plugin/pull/11">
+     *   GitHub discussion</a> for a reference.
+     */
+    private Properties storedProperties;
 
     public List<Server> listServers() {
         try {
@@ -273,7 +280,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         }
         try {        	
         	Hashtable<String,Object> preferences = buildDeploymentPreferences(artifact);            
-            AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());           
+            AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
             appManagementProxy.installApplication(artifact.getSourcePath().getAbsolutePath(),artifact.getAppName(),preferences, null);
             
             NotificationFilterSupport filterSupport = createFilterSupport();
@@ -412,6 +419,8 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
 
     public void connect() throws Exception {
+        // store the current environment, before that wsadmin client overrides it
+        storedProperties = (Properties) System.getProperties().clone();
         if(isConnected()) {
         	log.warning("Already connected to WebSphere Application Server");
         }
@@ -429,6 +438,11 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
 
     public void disconnect() {
+        // restore environment after execution
+        if (storedProperties != null) {
+            System.setProperties(storedProperties);
+            storedProperties = null;
+        }
     	if(client != null) {
     		client.getConnectorProperties().clear();
     		client = null;

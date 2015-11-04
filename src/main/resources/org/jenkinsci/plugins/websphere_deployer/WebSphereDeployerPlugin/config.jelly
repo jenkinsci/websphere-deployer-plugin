@@ -55,6 +55,9 @@
                 </j:choose>
             </select>
           </f:entry>  
+         <f:entry title="Build Unstable" field="buildUnstable">
+            <f:checkbox checked="${instance.buildUnstable}" default="false"/>
+          </f:entry>          
           <f:entry title="Rollback On Error" field="rollback">
             <f:checkbox checked="${instance.rollback}" default="false"/>
           </f:entry>

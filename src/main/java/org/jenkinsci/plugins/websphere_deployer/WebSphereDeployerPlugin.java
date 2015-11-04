@@ -58,6 +58,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final boolean verbose;
     private final boolean distribute;
     private final boolean rollback;
+    private final boolean buildUnstable;
     private final WebSphereSecurity security;
 
     @DataBoundConstructor
@@ -79,6 +80,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    boolean verbose,
                                    boolean distribute,
                                    boolean rollback,
+                                   boolean buildUnstable,
                                    String classLoaderPolicy,
                                    String classLoaderOrder) {
     	this.context = context;
@@ -97,6 +99,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.verbose = verbose;
         this.distribute = distribute;
         this.rollback = rollback;
+        this.buildUnstable = buildUnstable;
         this.security = security;
         this.classLoaderPolicy = classLoaderPolicy;
         this.classLoaderOrder = classLoaderOrder;
@@ -113,6 +116,10 @@ public class WebSphereDeployerPlugin extends Notifier {
     
     public String getClassLoaderPolicy() {
     	return classLoaderPolicy;
+    }
+    
+    public boolean isBuildUnstable() {
+    	return buildUnstable;
     }
     
     public String getTargets() {
@@ -185,7 +192,8 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
-        if(build.getResult().equals(Result.SUCCESS)) {
+    	Result result = build.getResult();
+        if(result.equals(Result.SUCCESS) || (isBuildUnstable() && result.equals(Result.UNSTABLE))) {
         	WebSphereDeploymentService service = new WebSphereDeploymentService();
         	Artifact artifact = null;
             try {            	
@@ -378,12 +386,14 @@ public class WebSphereDeployerPlugin extends Notifier {
         service.setConnectorType(getConnectorType());
         service.setHost(env.expand(getIpAddress()));
         service.setPort(env.expand(getPort()));
-        service.setUsername(env.expand(security.getUsername()));
-        service.setPassword(env.expand(security.getPassword()));
-        service.setKeyStoreLocation(new File(env.expand(security.getClientKeyFile())));
-        service.setKeyStorePassword(env.expand(security.getClientKeyPassword()));
-        service.setTrustStoreLocation(new File(env.expand(security.getClientTrustFile())));
-        service.setTrustStorePassword(env.expand(security.getClientTrustPassword()));
+        if(security != null) {
+        	service.setUsername(env.expand(security.getUsername()));
+        	service.setPassword(env.expand(security.getPassword()));
+        	service.setKeyStoreLocation(new File(env.expand(security.getClientKeyFile())));
+        	service.setKeyStorePassword(env.expand(security.getClientKeyPassword()));
+        	service.setTrustStoreLocation(new File(env.expand(security.getClientTrustFile())));
+        	service.setTrustStorePassword(env.expand(security.getClientTrustPassword()));
+        }
     }
 
     private String getAppName(Artifact artifact,WebSphereDeploymentService service) {

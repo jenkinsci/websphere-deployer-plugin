@@ -40,6 +40,7 @@ import com.ibm.websphere.management.application.AppManagementProxy;
 import com.ibm.websphere.management.application.AppNotification;
 import com.ibm.websphere.management.application.client.AppDeploymentController;
 import com.ibm.websphere.management.application.client.AppDeploymentTask;
+import com.ibm.websphere.management.exception.AdminException;
 import com.ibm.websphere.management.exception.ConnectorException;
 
 /**
@@ -390,10 +391,16 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     public boolean isArtifactInstalled(String name) {
         try {
             return AppManagementProxy.getJMXProxyForClient(getAdminClient()).checkIfAppExists(name, new Hashtable(), null);
-        } catch(Exception e) {
+        } catch(AdminException e) {
             e.printStackTrace();
-            throw new DeploymentServiceException("Could not determine if artifact '"+name+"' is installed: "+e.getMessage());
-        }
+            throw new DeploymentServiceException("Could not determine if artifact '"+name+"' is installed: AdminException: "+e.getMessage());
+        } catch (ConnectorException e) {
+			e.printStackTrace();
+			throw new DeploymentServiceException("Could not determine if artifact '"+name+"' is installed: ConnectorException: "+e.getMessage());
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new DeploymentServiceException("Could not determine if artifact '"+name+"' is installed: General Exception: "+e.getMessage());
+		}
     }
 
     private NotificationFilterSupport createFilterSupport(){

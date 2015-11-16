@@ -55,9 +55,6 @@
                 </j:choose>
             </select>
           </f:entry>  
-         <f:entry title="Build Unstable" field="buildUnstable">
-            <f:checkbox checked="${instance.buildUnstable}" default="false"/>
-          </f:entry>          
           <f:entry title="Rollback On Error" field="rollback">
             <f:checkbox checked="${instance.rollback}" default="false"/>
           </f:entry>
@@ -103,6 +100,9 @@
           <f:entry title="Remote App. Install Path" field="installPath">
             <f:textbox />
           </f:entry>           
+          <f:entry title="Deploy if build is unstable" field="unstableDeploy">
+            <f:checkbox checked="${instance.unstableDeploy}" default="true"/>
+          </f:entry>
           <f:entry title="Distribute Application" field="distribute">
             <f:checkbox checked="${instance.distribute}" default="true"/>
           </f:entry>                    

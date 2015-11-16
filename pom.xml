@@ -12,6 +12,10 @@
     <name>WebSphere Deployer Plugin</name>
     <inceptionYear>2013</inceptionYear>
     <url>https://wiki.jenkins-ci.org/display/JENKINS/WebSphere+Deployer+Plugin</url>
+    <description>
+    	A Jenkins plugin for automatically deploying artifacts to a variety of WebSphere servers.
+    	Deploys your web artifacts locally or remotely to IBM WebSphere Application Server or IBM WebSphere Liberty Profile
+    </description>
     
     <profiles>
     	<profile>
@@ -142,10 +146,6 @@
     		</dependencies>
     	</profile>
     </profiles>
-
-    <description>
-        Deploys your web artifacts locally or remotely to IBM WebSphere Application Server or IBM WebSphere Liberty Profile
-    </description>
 
     <licenses>
         <license>

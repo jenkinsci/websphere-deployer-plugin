@@ -56,6 +56,14 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     private String connectorType;
     private boolean verbose;
     private BuildListener buildListener;
+    /**
+     * This is used to prevent weird behaviors caused by IBM wsadmin that overrides
+     * system properties.
+     *
+     * @see <a href="https://github.com/jenkinsci/websphere-deployer-plugin/pull/11">
+     *   GitHub discussion</a> for a reference.
+     */
+    private Properties storedProperties;
 
     public List<Server> listServers() {
         try {
@@ -141,7 +149,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 	            // find uri attribute in context-root element
 	            Element contextRoot = (Element) doc.getElementsByTagName("context-root").item(0);
 	            String uri = contextRoot.getAttribute("uri");
-	            uri = uri.startsWith("/") ? "" : "/" + uri;
+	            uri = uri.startsWith("/") ? uri : "/" + uri;
 	            return uri;
             }
             return getContextRootFromWarName(artifact);            		
@@ -273,7 +281,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         }
         try {        	
         	Hashtable<String,Object> preferences = buildDeploymentPreferences(artifact);            
-            AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());           
+            AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
             appManagementProxy.installApplication(artifact.getSourcePath().getAbsolutePath(),artifact.getAppName(),preferences, null);
             
             NotificationFilterSupport filterSupport = createFilterSupport();
@@ -347,11 +355,13 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     
     public void startArtifact(String appName, int deploymentTimeout) throws Exception {
 		try {			
-			AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());			
+			AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());	
 			if(waitForApplicationDistribution(appManagementProxy, appName, deploymentTimeout * 60)) {
 				String targetsStarted = appManagementProxy.startApplication(appName, null, null);
 				log.info("Application was started on the following targets: "+ targetsStarted);
 				if (targetsStarted == null) {
+					//wait X seconds to let deployment settle
+					//TODO check if app really is started, if not throw an error
 					throw new DeploymentServiceException("Application did not start successfully. WAS JVM logs should contain more detailed information.");
 				}
 			} else {
@@ -418,6 +428,8 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
 
     public void connect() throws Exception {
+        // store the current environment, before that wsadmin client overrides it
+        storedProperties = (Properties) System.getProperties().clone();
         if(isConnected()) {
         	log.warning("Already connected to WebSphere Application Server");
         }
@@ -435,15 +447,11 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
 
     public void disconnect() {
-		System.clearProperty("javax.net.ssl.trustStore");
-		System.clearProperty("javax.net.ssl.keyStore");
-		System.clearProperty("javax.net.ssl.trustStorePassword");
-		System.clearProperty("javax.net.ssl.keyStorePassword");
-		System.clearProperty("com.ibm.ssl.trustStore");
-		System.clearProperty("com.ibm.ssl.keyStore");
-		System.clearProperty("com.ibm.ssl.trustStorePassword");
-		System.clearProperty("com.ibm.ssl.keyStorePassword");
-		System.clearProperty("com.ibm.ssl.performURLHostNameVerification");
+        // restore environment after execution
+        if (storedProperties != null) {
+            System.setProperties(storedProperties);
+            storedProperties = null;
+        }
     	if(client != null) {
     		client.getConnectorProperties().clear();
     		client = null;

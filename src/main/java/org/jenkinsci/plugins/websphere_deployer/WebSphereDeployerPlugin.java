@@ -31,6 +31,8 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
+import com.ibm.icu.text.SimpleDateFormat;
+
 /**
  * A Jenkins plugin for deploying to WebSphere either locally or remotely.
  *
@@ -58,7 +60,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final boolean verbose;
     private final boolean distribute;
     private final boolean rollback;
-    private final boolean buildUnstable;
+    private final boolean unstableDeploy;
     private final WebSphereSecurity security;
 
     @DataBoundConstructor
@@ -80,7 +82,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    boolean verbose,
                                    boolean distribute,
                                    boolean rollback,
-                                   boolean buildUnstable,
+                                   boolean unstableDeploy,
                                    String classLoaderPolicy,
                                    String classLoaderOrder) {
     	this.context = context;
@@ -99,7 +101,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.verbose = verbose;
         this.distribute = distribute;
         this.rollback = rollback;
-        this.buildUnstable = buildUnstable;
+        this.unstableDeploy = unstableDeploy;
         this.security = security;
         this.classLoaderPolicy = classLoaderPolicy;
         this.classLoaderOrder = classLoaderOrder;
@@ -116,10 +118,6 @@ public class WebSphereDeployerPlugin extends Notifier {
     
     public String getClassLoaderPolicy() {
     	return classLoaderPolicy;
-    }
-    
-    public boolean isBuildUnstable() {
-    	return buildUnstable;
     }
     
     public String getTargets() {
@@ -158,6 +156,10 @@ public class WebSphereDeployerPlugin extends Notifier {
     	return rollback;
     }
 
+    public boolean isUnstableDeploy() {
+        return unstableDeploy;
+    }
+
     public String getIpAddress() {
         return ipAddress;
     }
@@ -192,8 +194,7 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
-    	Result result = build.getResult();
-        if(result.equals(Result.SUCCESS) || (isBuildUnstable() && result.equals(Result.UNSTABLE))) {
+        if(shouldDeploy(build.getResult())) {
         	WebSphereDeploymentService service = new WebSphereDeploymentService();
         	Artifact artifact = null;
             try {            	
@@ -233,10 +234,15 @@ public class WebSphereDeployerPlugin extends Notifier {
                 service.disconnect();
             }
         } else {
-        	listener.getLogger().println("Unable to deploy to IBM WebSphere Application Server, Build Result = FAILURE");
-        	build.setResult(Result.FAILURE);
+            listener.getLogger().println("Unable to deploy to IBM WebSphere Application Server, Build Result = " + build.getResult());
         }
         return true;
+    }
+
+    private boolean shouldDeploy(Result result) {
+        if (result.equals(Result.SUCCESS)) return true;
+        if (unstableDeploy && result.equals(Result.UNSTABLE)) return true;
+        return false;
     }
     
     private void log(BuildListener listener,String data) {
@@ -371,8 +377,9 @@ public class WebSphereDeployerPlugin extends Notifier {
         } else {
             listener.getLogger().println("The following artifacts will be deployed in this order...");
             listener.getLogger().println("-------------------------------------------");
+            SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy HH:mm:ss");
             for(FilePath path:paths) {
-                listener.getLogger().println(path.getName());
+                listener.getLogger().println(path.getRemote()+" Last modified on "+sdf.format(path.lastModified()));
             }
             listener.getLogger().println("-------------------------------------------");
         }

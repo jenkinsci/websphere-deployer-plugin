@@ -1,0 +1,7 @@
+<div>
+Specifies the order in which applications are started when the server starts. The startup order is like a starting weight. The application with the lowest starting weight is started first.
+
+Avoid trouble Avoid trouble: Be aware of the following limitations:
+The first application might not start completely before the application server tries to start the next application in the startup order. This scenario might cause unexpected results if the second application depends on the first application.
+For Session Initiation Protocol (SIP) applications, the load-on-startup tag in the sip.xml file affects the order in which servlets within applications are started. The value that you set for Startup order on this Startup behavior console page determines the importance or weight of an application within a composition of SIP applications. For example, for the most important SIP application within a SIP application composition, specify 1 for Startup order. For the next most important SIP application within the composition, specify 2 for Startup order, and so on. For more information, see the JSR 116 specification.    
+</div>

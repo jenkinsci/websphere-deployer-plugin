@@ -1,0 +1,7 @@
+<div>
+    Specifies whether the class loader searches in the parent class loader or in the application class loader first to load a class. The standard for development kit class loaders and WebSphere® Application Server class loaders is Classes loaded with parent class loader first. By specifying Classes loaded with local class loader first (parent last), your application can override classes contained in the parent class loader, but this action can potentially result in ClassCastException or LinkageErrors if you have mixed use of overridden classes and non-overridden classes.
+
+The options are Classes loaded with parent class loader first and Classes loaded with local class loader first (parent last). The default is to search in the parent class loader before searching in the application class loader to load a class.
+
+For your application to use the default configuration of Jakarta Commons Logging in WebSphere Application Server, set this application class loader mode to Classes loaded with parent class loader first. For your application to override the default configuration of Jakarta Commons Logging in WebSphere Application Server, your application must provide the configuration in a form supported by Jakarta Commons Logging and this class loader mode must be set to Classes loaded with local class loader first (parent last). Also, to override the default configuration, set the class loader mode for each web module in your application so that the correct logger factory loads.
+</div>

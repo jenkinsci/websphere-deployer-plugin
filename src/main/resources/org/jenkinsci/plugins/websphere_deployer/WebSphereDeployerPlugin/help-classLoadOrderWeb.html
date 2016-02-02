@@ -1,0 +1,5 @@
+<div>
+    Specifies whether the class loader searches in the parent class loader or in the application class loader first to load a class. The standard for development kit class loaders and product class loaders is Classes loaded with parent class loader first. By specifying Classes loaded with application class loader first, your application can override classes contained in the parent class loader, but this action can potentially result in ClassCastException or LinkageErrors if you have mixed use of overridden classes and non-overridden classes.
+
+The options are Classes loaded with parent class loader first and Classes loaded with local class loader first (parent last). The default is to search in the parent class loader before searching in the application class loader to load a class.
+</div>

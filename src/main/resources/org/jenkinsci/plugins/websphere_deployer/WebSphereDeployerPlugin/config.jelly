@@ -1,9 +1,9 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
 
-  <f:section title="WebSphere Connectivity">
-      <f:entry title="WebSphere IP/DNS" field="ipAddress">
-        <f:textbox />
-      </f:entry>
+    <f:section title="WebSphere Connectivity">
+        <f:entry title="WebSphere IP/DNS" field="ipAddress">
+            <f:textbox />
+        </f:entry>
         <f:entry title="Connector Type" field="connectorType">
             <select name="connectorType">            
                 <option value="SOAP">SOAP</option>
@@ -13,116 +13,205 @@
                 <option value="JMS">JMS</option>
             </select>
         </f:entry>
-      <f:entry title="Port" field="port">
-        <f:textbox/>
-      </f:entry>
-  </f:section>
+        <f:entry title="Port" field="port">
+            <f:textbox/>
+        </f:entry>
+    </f:section>
     <f:section title="WebSphere Authentication (if required)">
-          <f:entry title="Username" field="username">
+        <f:entry title="Username" field="username">
             <f:textbox />
-          </f:entry>
-          <f:entry title="Password" field="password">
+        </f:entry>
+        <f:entry title="Password" field="password">
             <f:password />
-          </f:entry>
-          <f:entry title="Client Keystore File Path" field="clientKeyFile">
+        </f:entry>
+        <f:entry title="Client Keystore File Path" field="clientKeyFile">
             <f:textbox />
-          </f:entry>
-          <f:entry title="Client Keystore Password" field="clientKeyPassword">
+        </f:entry>
+        <f:entry title="Client Keystore Password" field="clientKeyPassword">
             <f:password />
-          </f:entry>
-          <f:entry title="Client Truststore File Path" field="clientTrustFile">
+        </f:entry>
+        <f:entry title="Client Truststore File Path" field="clientTrustFile">
             <f:textbox />
-          </f:entry>
-          <f:entry title="Client Truststore Password" field="clientTrustPassword">
+        </f:entry>
+        <f:entry title="Client Truststore Password" field="clientTrustPassword">
             <f:password/>
-          </f:entry>
+        </f:entry>
     </f:section>
     <f:validateButton
-       title="Test Connection" progress="Connecting..."
-       method="testConnection" with="ipAddress,connectorType,port,username,password,clientKeyFile,clientTrustFile,clientKeyPassword,clientTrustPassword" />
+        title="Test Connection" progress="Connecting..."
+        method="testConnection" with="ipAddress,connectorType,port,username,password,clientKeyFile,clientTrustFile,clientKeyPassword,clientTrustPassword" />
     <f:section title="WebSphere Deployment">
-          <f:entry title="EAR Path" field="artifacts">
+
+        <f:entry title="Deploy main configuration">            
+            <f:repeatable var="ddd" name="deployData" items="${instance.deployData}"
+                          noAddButton="false" minimum="1" add="Add config element">            
+                <table width="100%">          
+                
+                    <f:entry title="Artifacts for deploy">            
+                        <f:repeatable var="ttt" name="artifacts" items="${ddd.artifacts}"
+                                      noAddButton="false" minimum="1" add="Add artifact">
+                            <table width="80%">          
+                                <f:entry title="EAR Path" field="artifact">
+                                    <f:textbox name="ttt.artifact" value="${ttt.artifact}" />
+                                </f:entry>
+                                <f:entry title="URI" field="bindUri">
+                                    <f:textbox name="ttt.bindUri" value="${ttt.bindUri}" />
+                                </f:entry>
+
+                                <j:choose>
+                                    
+                                    <j:when test="${ttt == null || (ttt.startupOrder == null 
+                                                    &amp;&amp; ttt.isDefaultClassLoadOrder()
+                                                    &amp;&amp; ttt.isDefaultWarClassLoaderPolicy()
+                                                    &amp;&amp; ttt.startingWeightWeb == null
+                                                    &amp;&amp; ttt.isDefaultClassLoadOrderWeb())}">
+                                                                                        
+                                        <f:advanced>                                            
+                                            <f:entry title="Startup order" field="startupOrder">
+                                                <f:textbox name="ttt.startupOrder" value="${ttt.startupOrder}" />
+                                            </f:entry>                                            
+                                            <f:entry title="Class loader order" field="classLoadOrder">
+                                                <select name="ttt.classLoadOrder">                                                
+                                                    <j:forEach var="value" items="${descriptor.getAllClassLoadOrder()}">
+                                                        <f:option selected="${ttt.classLoadOrder==value}">${value}</f:option>
+                                                    </j:forEach>
+                                                </select>
+                                            </f:entry>                                            
+                                            <f:entry title="WAR class loader policy" field="warClassLoaderPolicy">
+                                                <select name="ttt.warClassLoaderPolicy">
+                                                    <j:forEach var="value" items="${descriptor.getAllWarClassLoaderPolicy()}">
+                                                        <f:option selected="${ttt.warClassLoaderPolicy==value}">${value}</f:option>
+                                                    </j:forEach>
+                                                </select>
+                                            </f:entry>                                            
+                                            <f:entry title="Web Starting weight" field="startingWeightWeb">
+                                                <f:textbox name="ttt.startingWeightWeb" value="${ttt.startingWeightWeb}" />
+                                            </f:entry>                                           
+                                            <f:entry title="Web class loader order" field="classLoadOrderWeb">
+                                                <select name="ttt.classLoadOrderWeb">
+                                                    <j:forEach var="value" items="${descriptor.getAllClassLoadOrderWeb()}">
+                                                        <f:option selected="${ttt.classLoadOrderWeb==value}">${value}</f:option>
+                                                    </j:forEach>
+                                                </select>
+                                            </f:entry>                                           
+                                        </f:advanced>                                                                                
+                                    </j:when>                                    
+
+                                    <j:otherwise>
+                                        <f:entry title="Startup order" field="startupOrder">
+                                            <f:textbox name="ttt.startupOrder" value="${ttt.startupOrder}" />
+                                        </f:entry>                                            
+                                        <f:entry title="Class loader order" field="classLoadOrder">
+                                            <select name="ttt.classLoadOrder">                                                
+                                                <j:forEach var="value" items="${descriptor.getAllClassLoadOrder()}">
+                                                    <f:option selected="${ttt.classLoadOrder==value}">${value}</f:option>
+                                                </j:forEach>
+                                            </select>
+                                        </f:entry>                                            
+                                        <f:entry title="WAR class loader policy" field="warClassLoaderPolicy">
+                                            <select name="ttt.warClassLoaderPolicy">
+                                                <j:forEach var="value" items="${descriptor.getAllWarClassLoaderPolicy()}">
+                                                    <f:option selected="${ttt.warClassLoaderPolicy==value}">${value}</f:option>
+                                                </j:forEach>
+                                            </select>
+                                        </f:entry>                                            
+                                        <f:entry title="Web Starting weight" field="startingWeightWeb">
+                                            <f:textbox name="ttt.startingWeightWeb" value="${ttt.startingWeightWeb}" />
+                                        </f:entry>                                           
+                                        <f:entry title="Web class loader order" field="classLoadOrderWeb">
+                                            <select name="ttt.classLoadOrderWeb">
+                                                <j:forEach var="value" items="${descriptor.getAllClassLoadOrderWeb()}">
+                                                    <f:option selected="${ttt.classLoadOrderWeb==value}">${value}</f:option>
+                                                </j:forEach>
+                                            </select>
+                                        </f:entry>                         
+                                    </j:otherwise>
+                                
+                                </j:choose>
+
+                            </table>
+                            <div align="right">
+                                <input type="button" value="Delete artifact" class="repeatable-delete" style="margin-left: 1em;" />
+                            </div>   
+                        </f:repeatable>            
+                    </f:entry>
+
+                    <f:entry title="Targets for deploy">            
+                        <f:repeatable var="ttt" name="targets" items="${ddd.targets}"
+                                      noAddButton="false" minimum="1" add="Add target">            
+                            <table width="80%">                
+                                <f:entry title="Target Node" field="node" >
+                                    <f:textbox name="ttt.node" value="${ttt.node}" />
+                                </f:entry>
+                                <f:entry title="Target Cell" field="cell" >
+                                    <f:textbox name="ttt.cell" value="${ttt.cell}" />
+                                </f:entry>
+                                <f:entry title="Target Server" field="server" >
+                                    <f:textbox name="ttt.server" value="${ttt.server}" />
+                                </f:entry>
+                                <f:entry title="Target Cluster" field="cluster" >
+                                    <f:textbox name="ttt.cluster" value="${ttt.cluster}" />
+                                </f:entry>
+                            </table>      
+                            <div align="right">
+                                <input type="button" value="Delete target" class="repeatable-delete" style="margin-left: 1em;" />
+                            </div>                                    
+                        </f:repeatable>            
+                    </f:entry>
+                </table>      
+                <div align="right">
+                    <input type="button" value="Delete config element" class="repeatable-delete" style="margin-left: 1em;" />
+                </div>                       
+            </f:repeatable>            
+        </f:entry>                     
+        
+        <f:entry title="Deployment Timeout (minutes)" field="deploymentTimeout">
             <f:textbox />
-          </f:entry>
-          <f:entry title="Target Node" field="node">
-            <f:textbox />
-          </f:entry>
-          <f:entry title="Target Cell" field="cell">
-            <f:textbox />
-          </f:entry>
-          <f:entry title="Target Server" field="server">
-            <f:textbox />
-          </f:entry>
-          <f:entry title="Target Cluster" field="cluster">
-            <f:textbox />
-          </f:entry>
-          <f:entry title="Deployment Timeout (minutes)" field="deploymentTimeout">
-            <f:textbox />
-          </f:entry>       
-          <f:entry title="Generated EAR Level" field="earLevel">
+        </f:entry>       
+        <f:entry title="Generated EAR Level" field="earLevel">
             <select name="earLevel">                
                 <j:choose>
-                	<j:when test="${instance.earLevel == '5' || instance.earLevel == '' || instance.earLevel == null}">
-                    	<option value="5">Java EE 5</option>
+                    <j:when test="${instance.earLevel == '5' || instance.earLevel == '' || instance.earLevel == null}">
+                        <option value="5">Java EE 5</option>
                         <option value="6">Java EE 6</option>
                         <option value="7">Java EE 7</option>                	
-                	</j:when>
+                    </j:when>
                     <j:when test="${instance.earLevel == '6'}">
-                    	<option value="5">Java EE 5</option>
+                        <option value="5">Java EE 5</option>
                         <option value="6" selected="selected">Java EE 6</option>
                         <option value="7">Java EE 7</option>
                     </j:when>
                     <j:when test="${instance.earLevel == '7'}">
-                    	<option value="5">Java EE 5</option>
-                    	<option value="6">Java EE 6</option>
+                        <option value="5">Java EE 5</option>
+                        <option value="6">Java EE 6</option>
                         <option value="7" selected="selected">Java EE 7</option>
                     </j:when>                    
                 </j:choose>
             </select>
-          </f:entry>
-          <f:entry title="Operations" field="operations">
-             <select name="operations">                
+        </f:entry>
+        <f:entry title="Operations" field="operations">
+            <select name="operations">                
                 <j:choose>
-                	<j:when test="${instance.operations == '1' || instance.operations == null}">
-                    	<option value="1">Install/Reinstall Application(s)</option>
+                    <j:when test="${instance.operations == '1' || instance.operations == null}">
+                        <option value="1">Install/Reinstall Application(s)</option>
                         <option value="2">Install/Update Application(s)</option>  	
-                	</j:when>
+                    </j:when>
                     <j:when test="${instance.operations == '2'}">
-                    	<option value="1">Install/Reinstall Application(s)</option>
+                        <option value="1">Install/Reinstall Application(s)</option>
                         <option value="2" selected="selected">Install/Update Application(s)</option>  
                     </j:when>              
                 </j:choose>
             </select>
-          </f:entry>
-          <f:entry title="Precompile JSPs" field="precompile">
+        </f:entry>
+        <f:entry title="Precompile JSPs" field="precompile">
             <f:checkbox checked="${instance.precompile}" default="true"/>
-          </f:entry>
-          <f:entry title="JSP Reloading" field="reloading">
+        </f:entry>
+        <f:entry title="JSP Reloading" field="reloading">
             <f:checkbox checked="${instance.reloading}" default="true"/>
-          </f:entry>
-          <f:entry title="Verbose Output" field="verbose">
+        </f:entry>
+        <f:entry title="Verbose Output" field="verbose">
             <f:checkbox checked="${instance.verbose}" default="false"/>
-          </f:entry>          
-          <f:entry title="Application Classloader Policy" field="classLoaderPolicy">
-              <select name="classLoaderPolicy">
-              	<j:choose>
-              		<j:when test="${instance.classLoaderPolicy == '' || instance.classLoaderPolicy == null}">
-                  		<option value="">Default</option>
-                  		<option value="0">Parent_First</option>
-                  		<option value="1">Parent_Last</option>	
-                	</j:when>
-                	<j:when test="${instance.classLoaderPolicy == '0'}">
-                		<option value="">Default</option>
-                  		<option value="0" selected="selected">Parent_First</option>
-                  		<option value="1">Parent_Last</option>	
-                  	</j:when>
-                  	<j:when test="${instance.classLoaderPolicy == '1'}">
-                  		<option value="">Default</option>
-                  		<option value="0">Parent_First</option>
-                  		<option value="1" selected="selected">Parent_Last</option>	
-                  	</j:when>
-                 </j:choose>
-              </select>
-          </f:entry>
-    </f:section>
+        </f:entry>
+    </f:section>    
+    
 </j:jelly>

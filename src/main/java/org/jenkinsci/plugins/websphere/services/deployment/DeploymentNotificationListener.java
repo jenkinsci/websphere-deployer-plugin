@@ -3,7 +3,6 @@ package org.jenkinsci.plugins.websphere.services.deployment;
 import hudson.model.BuildListener;
 
 import java.util.Properties;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.management.Notification;
@@ -13,78 +12,115 @@ import javax.management.ObjectName;
 
 import com.ibm.websphere.management.AdminClient;
 import com.ibm.websphere.management.application.AppNotification;
+import com.ibm.websphere.management.exception.ConnectorException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import javax.management.InstanceNotFoundException;
+import javax.management.MalformedObjectNameException;
 
-public class DeploymentNotificationListener implements NotificationListener
-{
-   private static Logger log = Logger.getLogger(DeploymentNotificationListener.class.getName());
-   private AdminClient adminClient;
-   private NotificationFilterSupport filterSupport;
-   private ObjectName objectName;
-   private String eventTypeToCheck;
-   private boolean successful = true;
-   private String message = "";
-   private Properties notificationProps = new Properties();
-   private BuildListener listener;
-   private boolean verbose;
+public class DeploymentNotificationListener implements NotificationListener {
 
-   public DeploymentNotificationListener(AdminClient adminClient, NotificationFilterSupport support, Object handBack, String eventTypeToCheck,BuildListener listener,boolean verbose) throws Exception {
-      super();
-      this.adminClient = adminClient;
-      this.filterSupport = support;
-      this.eventTypeToCheck = eventTypeToCheck;
-      this.listener = listener;
-      this.verbose = verbose;
-      this.objectName = (ObjectName) adminClient.queryNames(new ObjectName("WebSphere:type=AppManagement,*"), null).iterator().next();
-      adminClient.addNotificationListener(objectName, this, filterSupport, handBack);
-   }
+    private static Logger LOG = Logger.getLogger(DeploymentNotificationListener.class.getName());
+    private final AdminClient adminClient;
+    private final NotificationFilterSupport filterSupport;
+    private final ObjectName objectName;
+    private final List<String> eventTypeToCheck;
+    private boolean successful = true;
+    private String message = "";
+    private AtomicReference<Properties> notificationProps = new AtomicReference<Properties>();
+    private final BuildListener listener;
+    private final Object handBack;
+    private final boolean isVerbose;
+    private final CountDownLatch lautch = new CountDownLatch(1);
 
-   public void handleNotification(Notification notification, Object handback)
-   {
-      AppNotification appNotification = (AppNotification) notification.getUserData();
-      if(verbose) {
-    	  listener.getLogger().println(appNotification.taskName+"] "+appNotification.message+"["+appNotification.taskStatus+"]");
-      }
-      message += ("\n" + appNotification.message);
-      if (appNotification.taskName.equals(eventTypeToCheck) && (appNotification.taskStatus.equals(AppNotification.STATUS_COMPLETED) || appNotification.taskStatus.equals(AppNotification.STATUS_FAILED))) {
-			try {
-				adminClient.removeNotificationListener(objectName, this);
-				if (appNotification.taskStatus.equals(AppNotification.STATUS_FAILED)) {
-					successful = false;
-				} else {
-					notificationProps = appNotification.props;
-				}
+    public static DeploymentNotificationListener createListener(AdminClient adminClient, NotificationFilterSupport support,
+            Object handBack, String eventTypeToCheck, BuildListener listener, boolean isVerbose)
+            throws ConnectorException, MalformedObjectNameException, InstanceNotFoundException {
+        final DeploymentNotificationListener result
+                = new DeploymentNotificationListener(adminClient, support, handBack, Arrays.asList(eventTypeToCheck), listener, isVerbose);
+        result.subscribe();
+        return result;
+    }
 
-				synchronized (this) {
-					notifyAll();
-				}
-			} catch (Exception e) {
-			}
-      }
-   }
+    private DeploymentNotificationListener(AdminClient adminClient, NotificationFilterSupport support,
+            Object handBack, List<String> eventTypeToCheck, BuildListener listener, boolean isVerbose)
+            throws ConnectorException, MalformedObjectNameException {
+        super();
+        this.adminClient = adminClient;
+        this.filterSupport = support;
+        this.eventTypeToCheck = Collections.unmodifiableList(new ArrayList<String>(eventTypeToCheck));
+        this.listener = listener;
+        this.objectName = (ObjectName) adminClient.queryNames(new ObjectName("WebSphere:type=AppManagement,*"), null).iterator().next();
+        this.handBack = handBack;
+        this.isVerbose = isVerbose;
+    }
 
-	public String getMessage() {
-		return message;
-	}
+    private void subscribe() throws InstanceNotFoundException, ConnectorException {
+        adminClient.addNotificationListener(objectName, this, filterSupport, handBack);
+    }
 
-	public Properties getNotificationProps() {
-		return notificationProps;
-	}
+    public void unsubscribe() {
+        try {
+            adminClient.removeNotificationListener(objectName, this);
+        } catch (Exception e) {
+        }
+    }
 
-	public boolean isSuccessful() {
-		return successful;
-	}
+    @Override
+    public void handleNotification(Notification notification, Object handback) {
+        AppNotification appNotification = (AppNotification) notification.getUserData();
+        if (isVerbose) {
+            listener.getLogger().println(appNotification.taskName + "] " + appNotification.message + "[" + appNotification.taskStatus + "]");
+        }
+        message += ("\n" + appNotification.message);
+        if ((eventTypeToCheck.contains(appNotification.taskName)
+                && appNotification.taskStatus.equals(AppNotification.STATUS_COMPLETED)
+                || appNotification.taskStatus.equals(AppNotification.STATUS_FAILED))) {
+            try {
+                adminClient.removeNotificationListener(objectName, this);
+                if (appNotification.taskStatus.equals(AppNotification.STATUS_FAILED)) {
+                    successful = false;
+                } else {
+                    notificationProps.set(appNotification.props);
+                }
+            } catch (Exception e) {
+                listener.getLogger().println("Can`t remove listener: " + e.toString());
+            } finally {
+                lautch.countDown();
+            }
+        }
+    }
 
-	public AdminClient getAdminClient() {
-		return adminClient;
-	}
+    public String getMessage() {
+        return message;
+    }
 
-	public NotificationFilterSupport getFilterSupport() {
-		return filterSupport;
-	}
+    public Properties getNotificationProps() {
+        return notificationProps.get();
+    }
 
-	public ObjectName getObjectName() {
-		return objectName;
-	}
-   
-   
+    public boolean isSuccessful() {
+        return successful;
+    }
+
+    public AdminClient getAdminClient() {
+        return adminClient;
+    }
+
+    public NotificationFilterSupport getFilterSupport() {
+        return filterSupport;
+    }
+
+    public ObjectName getObjectName() {
+        return objectName;
+    }
+
+    public void await(TimeUnit timeUnit, int deploymentTimeout) throws InterruptedException {
+        lautch.await(deploymentTimeout, timeUnit);
+    }
 }

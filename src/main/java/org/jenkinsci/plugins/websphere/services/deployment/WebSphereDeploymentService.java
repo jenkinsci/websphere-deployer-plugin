@@ -231,8 +231,6 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
            throw new DeploymentServiceException("Unable to complete all task data for deployment preparation. Reason: " + Arrays.toString(validationResult));
         }
 
-        controller.saveAndClose();
-
         preferences.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
         preferences.put(AppConstants.APPDEPL_ARCHIVE_UPLOAD, Boolean.TRUE);
         preferences.put(AppConstants.APPDEPL_PRECOMPILE_JSP, artifact.isPrecompile());

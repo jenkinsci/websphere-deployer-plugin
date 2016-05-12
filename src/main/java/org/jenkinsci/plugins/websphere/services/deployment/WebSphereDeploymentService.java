@@ -323,7 +323,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             
         } catch (Exception e) {
             e.printStackTrace();
-            throw new DeploymentServiceException("Failed to updated artifact: "+e.getMessage());
+            throw new DeploymentServiceException("Failed to update artifact: "+e.getMessage());
         }        
 	}    
 

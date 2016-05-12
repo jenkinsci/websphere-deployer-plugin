@@ -232,7 +232,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
            throw new DeploymentServiceException("Unable to complete all task data for deployment preparation. Reason: " + Arrays.toString(validationResult));
         }
 
-        controller.saveAndClose();
+        //controller.saveAndClose(); //block editing of EAR upon validation
 
         preferences.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
         preferences.put(AppConstants.APPDEPL_ARCHIVE_UPLOAD, Boolean.TRUE);

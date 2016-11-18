@@ -400,7 +400,13 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 
     public boolean isArtifactInstalled(String name) {
         try {
-            return AppManagementProxy.getJMXProxyForClient(getAdminClient()).checkIfAppExists(name, new Hashtable(), null);
+        	System.out.println("Checking if app, looking up JMX interface...");
+        	AppManagement appManagement = AppManagementProxy.getJMXProxyForClient(getAdminClient());
+        	System.out.println("Getting JMX proxy client... AppManagementProxy Found: "+appManagement);
+        	System.out.println("Checking if app exists via AppMangementProxy...");
+            boolean result = appManagement.checkIfAppExists(name, new Hashtable(), null);
+            System.out.println(name+" is installed on WebSphere: "+result);
+            return result;
         } catch(AdminException e) {
             e.printStackTrace();
             throw new DeploymentServiceException("Could not determine if artifact '"+name+"' is installed: AdminException: "+e.getMessage());

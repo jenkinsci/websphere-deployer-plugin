@@ -64,8 +64,8 @@
           <f:entry title="EAR/WAR Path" field="artifacts">
             <f:textbox />
           </f:entry>
-          <f:entry title="Deployment Targets">
-          	<f:textarea field="targets" default="WebSphere:cell=[cellname],node=[nodeName],server=[serverName]">
+          <f:entry title="Deployment Targets" field="targets">
+          	<f:textarea default="WebSphere:cell=[cellname],node=[nodeName],server=[serverName]">
           	</f:textarea>
           </f:entry>
           <f:entry title="Deployment Timeout (minutes)" field="deploymentTimeout">

@@ -54,6 +54,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final String installPath;
     private final String targets;
     private final String applicationName;
+    private final String virtualHost;
     private final boolean precompile;
     private final boolean reloading;
     private final boolean jspReloading;
@@ -76,6 +77,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    String context,
                                    String targets,
                                    String applicationName,
+                                   String virtualHost,
                                    boolean precompile,
                                    boolean reloading,
                                    boolean jspReloading,
@@ -106,6 +108,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.classLoaderPolicy = classLoaderPolicy;
         this.classLoaderOrder = classLoaderOrder;
         this.applicationName = applicationName;
+        this.virtualHost = virtualHost;
     }
     
     public String getClassLoaderOrder() {
@@ -191,6 +194,10 @@ public class WebSphereDeployerPlugin extends Notifier {
     public String getDeploymentTimeout() {
 		return deploymentTimeout;
 	}    
+    
+    public String getVirtualHost() {
+    	return virtualHost;
+    }
 
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
@@ -350,6 +357,11 @@ public class WebSphereDeployerPlugin extends Notifier {
         if(StringUtils.trimToNull(context) != null) {
         	artifact.setContext(context);
         }                
+        if(virtualHost == null || virtualHost.trim().equals("")) {
+        	artifact.setVirtualHost("default_host");
+        } else {
+        	artifact.setVirtualHost(virtualHost);
+        }
         artifact.setClassLoaderOrder(classLoaderOrder);
         artifact.setClassLoaderPolicy(classLoaderPolicy);
         artifact.setTargets(targets);

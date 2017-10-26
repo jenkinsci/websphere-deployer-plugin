@@ -20,6 +20,7 @@ public class Artifact {
     private String installPath;
     private String classLoaderOrder;
     private String classLoaderPolicy;
+    private String virtualHost;
     
     public String getTypeName() {
     	switch(type) {
@@ -135,5 +136,13 @@ public class Artifact {
 	
 	public void setInstallPath(String installPath) {
 		this.installPath = installPath;
+	}
+
+	public String getVirtualHost() {
+		return virtualHost;
+	}
+
+	public void setVirtualHost(String virtualHost) {
+		this.virtualHost = virtualHost;
 	}  		
 }

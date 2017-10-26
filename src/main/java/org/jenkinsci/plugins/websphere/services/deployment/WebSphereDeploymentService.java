@@ -223,8 +223,9 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     
     private Hashtable<String,Object> buildDeploymentPreferences(Artifact artifact) throws Exception {
         Hashtable<String,Object> preferences = new Hashtable<String,Object>();
+        Properties defaultBinding = new Properties();
         preferences.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
-        preferences.put(AppConstants.APPDEPL_DFLTBNDG, new Properties());
+                
         AppDeploymentController controller = AppDeploymentController.readArchive(artifact.getSourcePath().getAbsolutePath(), preferences);
         
         String[] validationResult = controller.validate();
@@ -240,7 +241,11 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         preferences.put(AppConstants.APPDEPL_DISTRIBUTE_APP, artifact.isDistribute());
         preferences.put(AppConstants.APPDEPL_JSP_RELOADENABLED, artifact.isJspReloading());
         preferences.put(AppConstants.APPDEPL_RELOADENABLED, artifact.isReloading());
-        preferences.put(AppConstants.APPDEPL_DFLTBNDG_VHOST, artifact.getVirtualHost());
+        /** handle default binding **/
+        if(artifact.getVirtualHost() != null && !artifact.getVirtualHost().trim().equals("")) {
+        	defaultBinding.put(AppConstants.APPDEPL_DFLTBNDG_VHOST, artifact.getVirtualHost());	
+        }        
+        /** end handle default binding **/
         if(artifact.getSharedLibName() != null && !artifact.getSharedLibName().trim().equals("")) {
         	preferences.put(AppConstants.APPDEPL_SHAREDLIB_NAME, artifact.getSharedLibName());	
         }        
@@ -275,7 +280,8 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         Hashtable<String,Object> module2server = new Hashtable<String,Object>();
         buildListener.getLogger().println("Deploying to targets: "+getFormattedTargets(artifact.getTargets()));
         module2server.put("*", getFormattedTargets(artifact.getTargets()));
-        preferences.put(AppConstants.APPDEPL_MODULE_TO_SERVER, module2server);    	
+        preferences.put(AppConstants.APPDEPL_MODULE_TO_SERVER, module2server);  
+        preferences.put(AppConstants.APPDEPL_DFLTBNDG, defaultBinding);
         return preferences;
     }
 

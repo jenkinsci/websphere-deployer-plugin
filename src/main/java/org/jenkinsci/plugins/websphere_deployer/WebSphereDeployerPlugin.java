@@ -55,6 +55,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final String targets;
     private final String applicationName;
     private final String virtualHost;
+    private final String sharedLibName;
     private final boolean precompile;
     private final boolean reloading;
     private final boolean jspReloading;
@@ -78,6 +79,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    String targets,
                                    String applicationName,
                                    String virtualHost,
+                                   String sharedLibName,
                                    boolean precompile,
                                    boolean reloading,
                                    boolean jspReloading,
@@ -109,6 +111,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.classLoaderOrder = classLoaderOrder;
         this.applicationName = applicationName;
         this.virtualHost = virtualHost;
+        this.sharedLibName = sharedLibName;
     }
     
     public String getClassLoaderOrder() {
@@ -197,6 +200,10 @@ public class WebSphereDeployerPlugin extends Notifier {
     
     public String getVirtualHost() {
     	return virtualHost;
+    }
+    
+    public String getSharedLibName() {
+    	return sharedLibName;
     }
 
     @Override

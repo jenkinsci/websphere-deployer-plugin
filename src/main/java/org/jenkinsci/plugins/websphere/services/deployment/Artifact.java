@@ -21,6 +21,7 @@ public class Artifact {
     private String classLoaderOrder;
     private String classLoaderPolicy;
     private String virtualHost;
+    private String sharedLibName;
     
     public String getTypeName() {
     	switch(type) {
@@ -144,5 +145,13 @@ public class Artifact {
 
 	public void setVirtualHost(String virtualHost) {
 		this.virtualHost = virtualHost;
+	}
+
+	public String getSharedLibName() {
+		return sharedLibName;
+	}
+
+	public void setSharedLibName(String sharedLibName) {
+		this.sharedLibName = sharedLibName;
 	}  		
 }

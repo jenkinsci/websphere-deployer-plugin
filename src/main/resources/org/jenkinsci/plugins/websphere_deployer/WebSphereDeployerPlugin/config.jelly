@@ -99,7 +99,10 @@
 	<f:section title="WebSphere Deployment Options">
           <f:entry title="Virtual Host" field="virtualHost">
             <f:textbox value="${instance.virtualHost}" />
-          </f:entry>  	
+          </f:entry>
+          <f:entry title="Shared Lib Name" field="sharedLibName">
+            <f:textbox value="${instance.sharedLibName}" />
+          </f:entry>             	
           <f:entry title="Remote App. Install Path" field="installPath">
             <f:textbox value="${instance.installPath}"/>
           </f:entry>           

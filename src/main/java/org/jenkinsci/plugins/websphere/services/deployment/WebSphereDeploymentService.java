@@ -241,6 +241,9 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         preferences.put(AppConstants.APPDEPL_JSP_RELOADENABLED, artifact.isJspReloading());
         preferences.put(AppConstants.APPDEPL_RELOADENABLED, artifact.isReloading());
         preferences.put(AppConstants.APPDEPL_DFLTBNDG_VHOST, artifact.getVirtualHost());
+        if(artifact.getSharedLibName() != null && !artifact.getSharedLibName().trim().equals("")) {
+        	preferences.put(AppConstants.APPDEPL_SHAREDLIB_NAME, artifact.getSharedLibName());	
+        }        
         if(!artifact.isJspReloading()) {        	
         	preferences.put(AppConstants.APPDEPL_JSP_RELOADINTERVAL, new Integer(0));
         } else {

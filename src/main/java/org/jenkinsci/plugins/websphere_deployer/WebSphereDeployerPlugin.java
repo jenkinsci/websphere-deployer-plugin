@@ -228,6 +228,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                     		updateArtifact(artifact,listener,service);
                     	}
                     }
+                    service.fullResynchronizeNodes();
                     startArtifact(artifact.getAppName(),listener,service);
                     if(rollback) {
                     	saveArtifactToRollbackRepository(build, listener, artifact);

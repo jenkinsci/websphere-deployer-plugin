@@ -216,7 +216,8 @@ public class WebSphereDeployerPlugin extends Notifier {
                 preInitializeService(listener,service, env);  
             	service.connect();                	               
                 for(FilePath path:gatherArtifactPaths(build, listener)) {
-                    artifact = createArtifact(path,listener,service);                    
+                    artifact = createArtifact(path,listener,service);   
+                    log(listener,"Artifact is being deployed with Virtual Host: "+artifact.getVirtualHost());
                     stopArtifact(artifact.getAppName(),listener,service);
                     if(getOperations().equals(OPERATION_REINSTALL)) {
                     	uninstallArtifact(artifact.getAppName(),listener,service);

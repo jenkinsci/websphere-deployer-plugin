@@ -225,7 +225,12 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         Hashtable<String,Object> preferences = new Hashtable<String,Object>();
         Properties defaultBinding = new Properties();
         preferences.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
-                
+        /** handle default binding **/
+        if(artifact.getVirtualHost() != null && !artifact.getVirtualHost().trim().equals("")) {
+        	defaultBinding.put(AppConstants.APPDEPL_DFLTBNDG_VHOST, artifact.getVirtualHost());	
+        }        
+        /** end handle default binding **/
+        preferences.put(AppConstants.APPDEPL_DFLTBNDG, defaultBinding);                
         AppDeploymentController controller = AppDeploymentController.readArchive(artifact.getSourcePath().getAbsolutePath(), preferences);
         
         String[] validationResult = controller.validate();
@@ -241,13 +246,13 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         preferences.put(AppConstants.APPDEPL_DISTRIBUTE_APP, artifact.isDistribute());
         preferences.put(AppConstants.APPDEPL_JSP_RELOADENABLED, artifact.isJspReloading());
         preferences.put(AppConstants.APPDEPL_RELOADENABLED, artifact.isReloading());
-        /** handle default binding **/
         if(artifact.getVirtualHost() != null && !artifact.getVirtualHost().trim().equals("")) {
-        	defaultBinding.put(AppConstants.APPDEPL_DFLTBNDG_VHOST, artifact.getVirtualHost());	
-        }        
-        /** end handle default binding **/
+            preferences.put(AppConstants.APPDEPL_VIRTUAL_HOST, artifact.getVirtualHost());
+            preferences.put(AppConstants.APPDEPL_RESOURCE_MAPPER_VIRTUAL_HOST, artifact.getVirtualHost());	
+        }
         if(artifact.getSharedLibName() != null && !artifact.getSharedLibName().trim().equals("")) {
-        	preferences.put(AppConstants.APPDEPL_SHAREDLIB_NAME, artifact.getSharedLibName());	
+        	preferences.put(AppConstants.APPDEPL_SHAREDLIB_NAME, artifact.getSharedLibName());
+        	preferences.put(AppConstants.APPDEPL_MAP_SHAREDLIB, artifact.getSharedLibName());
         }        
         if(!artifact.isJspReloading()) {        	
         	preferences.put(AppConstants.APPDEPL_JSP_RELOADINTERVAL, new Integer(0));
@@ -280,8 +285,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         Hashtable<String,Object> module2server = new Hashtable<String,Object>();
         buildListener.getLogger().println("Deploying to targets: "+getFormattedTargets(artifact.getTargets()));
         module2server.put("*", getFormattedTargets(artifact.getTargets()));
-        preferences.put(AppConstants.APPDEPL_MODULE_TO_SERVER, module2server);  
-        preferences.put(AppConstants.APPDEPL_DFLTBNDG, defaultBinding);
+        preferences.put(AppConstants.APPDEPL_MODULE_TO_SERVER, module2server);          
         return preferences;
     }
 

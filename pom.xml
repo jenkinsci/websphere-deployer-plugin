@@ -7,7 +7,7 @@
     </parent>
 
     <artifactId>websphere-deployer</artifactId>
-    <version>1.4.5-SNAPSHOT</version>
+    <version>1.4.8-SNAPSHOT</version>
     <packaging>hpi</packaging>
     <name>WebSphere Deployer Plugin</name>
     <inceptionYear>2013</inceptionYear>
@@ -25,15 +25,22 @@
 		        <dependency>
 		            <groupId>com.ibm.ws</groupId>
 		            <artifactId>admin</artifactId>
-		            <version>8.5.0</version>
+		            <version>9.0</version>
 		            <scope>provided</scope>
 		        </dependency>
 		        <dependency>
 		            <groupId>com.ibm.ws</groupId>
 		            <artifactId>orb</artifactId>
-		            <version>8.5.0</version>
+		            <version>9.0</version>
 		            <scope>provided</scope>
-		        </dependency>		        
+		        </dependency>
+		        <dependency>
+				      <groupId>com.ibm.tools.target</groupId>
+				      <artifactId>was-liberty</artifactId>
+				      <version>LATEST</version>
+				      <type>pom</type>
+				      <scope>provided</scope>
+				</dependency>
 			</dependencies>       		
     	</profile>
     	<profile>

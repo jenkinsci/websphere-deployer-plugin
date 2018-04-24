@@ -29,6 +29,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.soap.rpc.Call;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -55,6 +56,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     private AdminClient client;
     private String connectorType;
     private boolean verbose;
+    private boolean trustAll;
     private BuildListener buildListener;
     /**
      * This is used to prevent weird behaviors caused by IBM wsadmin that overrides
@@ -459,6 +461,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         if(StringUtils.trimToNull(getUsername()) != null) {
             injectSecurityConfiguration(config);
         }
+        
         config.put(AdminClient.CONNECTOR_TYPE, getConnectorType());
         client = AdminClientFactory.createAdminClient(config);
         if(client == null) {
@@ -495,30 +498,40 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
 
     private void injectSecurityConfiguration(Properties config) {
+    	if(verbose) {
+    		org.apache.soap.util.net.SSLUtils.traceEnabled = true;
+    		Call.traceEnabled = true;
+    	}
+    	
         config.put(AdminClient.CACHE_DISABLED, "true");
         config.put(AdminClient.CONNECTOR_SECURITY_ENABLED, "true");
         config.put(AdminClient.USERNAME, getUsername());
         config.put(AdminClient.PASSWORD, getPassword());
-
-        if(getTrustStoreLocation() != null) {
-	        config.put("com.ibm.ssl.trustStore", getTrustStoreLocation().getAbsolutePath());
-	        config.put("javax.net.ssl.trustStore", getTrustStoreLocation().getAbsolutePath());
-        }
-
-        if(getKeyStoreLocation() != null) {
-        	config.put("com.ibm.ssl.keyStore", getKeyStoreLocation().getAbsolutePath());
-        	config.put("javax.net.ssl.keyStore", getKeyStoreLocation().getAbsolutePath());
-        }
-
-        if(getTrustStorePassword() != null) {
-        	config.put("com.ibm.ssl.trustStorePassword", getTrustStorePassword());
-        	config.put("javax.net.ssl.trustStorePassword",getTrustStorePassword());
-        }
-
-        if(getKeyStorePassword() != null) {
-        	config.put("com.ibm.ssl.keyStorePassword", getKeyStorePassword());
-        	config.put("javax.net.ssl.keyStorePassword", getKeyStorePassword());
-        }
+        
+    	if(trustAll) {
+    		SSLUtilities.trustAllHostnames();
+    		SSLUtilities.trustAllHttpsCertificates();
+    	} else {
+	        if(getTrustStoreLocation() != null && getTrustStoreLocation().getAbsolutePath().endsWith(".jks")) {
+		        config.put("com.ibm.ssl.trustStore", getTrustStoreLocation().getAbsolutePath());
+		        config.put("javax.net.ssl.trustStore", getTrustStoreLocation().getAbsolutePath());
+	        }
+	
+	        if(getKeyStoreLocation() != null && getKeyStoreLocation().getAbsolutePath().endsWith(".jks")) {
+	        	config.put("com.ibm.ssl.keyStore", getKeyStoreLocation().getAbsolutePath());
+	        	config.put("javax.net.ssl.keyStore", getKeyStoreLocation().getAbsolutePath());
+	        }
+	
+	        if(getTrustStorePassword() != null && !getTrustStorePassword().equals("")) {
+	        	config.put("com.ibm.ssl.trustStorePassword", getTrustStorePassword());
+	        	config.put("javax.net.ssl.trustStorePassword",getTrustStorePassword());
+	        }
+	
+	        if(getKeyStorePassword() != null && !getKeyStorePassword().equals("")) {
+	        	config.put("com.ibm.ssl.keyStorePassword", getKeyStorePassword());
+	        	config.put("javax.net.ssl.keyStorePassword", getKeyStorePassword());
+	        }
+    	}
     }
 
     private String getFormattedTargets(String targets) {
@@ -587,5 +600,9 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 		}
 		return distributionState;
     }
+
+	public void setTrustAll(boolean trustAll) {
+		this.trustAll = trustAll;
+	}
 
 }

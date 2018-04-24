@@ -12,6 +12,7 @@
     <name>WebSphere Deployer Plugin</name>
     <inceptionYear>2013</inceptionYear>
     <url>https://wiki.jenkins-ci.org/display/JENKINS/WebSphere+Deployer+Plugin</url>
+
     <description>
     	A Jenkins plugin for automatically deploying artifacts to a variety of WebSphere servers.
     	Deploys your web artifacts locally or remotely to IBM WebSphere Application Server or IBM WebSphere Liberty Profile
@@ -32,31 +33,7 @@
 		            <artifactId>orb</artifactId>
 		            <version>8.5.0</version>
 		            <scope>provided</scope>
-		        </dependency>
-		        <dependency>
-		            <groupId>com.ibm.ws</groupId>
-		            <artifactId>liberty-connector</artifactId>
-		            <version>8.5.5</version>
-		            <scope>provided</scope>
-		        </dependency>
-		        <dependency>
-		            <groupId>com.ibm.ws</groupId>
-		            <artifactId>liberty-rest-connector</artifactId>
-		            <version>8.5.5</version>
-		            <scope>provided</scope>
-		        </dependency>
-		        <dependency>
-		            <groupId>com.ibm.ws</groupId>
-		            <artifactId>liberty-basic</artifactId>
-		            <version>8.5.5</version>
-		            <scope>provided</scope>
-		        </dependency>
-		        <dependency>
-		            <groupId>com.ibm.ws</groupId>
-		            <artifactId>liberty-endpoint</artifactId>
-		            <version>8.5.5</version>
-		            <scope>provided</scope>
-		        </dependency> 		        
+		        </dependency>		        
 			</dependencies>       		
     	</profile>
     	<profile>
@@ -69,39 +46,22 @@
 		        <dependency>
 		            <groupId>com.ibm.ws</groupId>
 		            <artifactId>admin</artifactId>
-		            <version>8.5.0</version>
+		            <version>9.0</version>
 		            <scope>compile</scope>
 		        </dependency>
 		        <dependency>
 		            <groupId>com.ibm.ws</groupId>
 		            <artifactId>orb</artifactId>
-		            <version>8.5.0</version>
+		            <version>9.0</version>
 		            <scope>compile</scope>
 		        </dependency>
 		        <dependency>
-		            <groupId>com.ibm.ws</groupId>
-		            <artifactId>liberty-connector</artifactId>
-		            <version>8.5.5</version>
-		            <scope>provided</scope>
-		        </dependency>
-		        <dependency>
-		            <groupId>com.ibm.ws</groupId>
-		            <artifactId>liberty-rest-connector</artifactId>
-		            <version>8.5.5</version>
-		            <scope>provided</scope>
-		        </dependency>
-		        <dependency>
-		            <groupId>com.ibm.ws</groupId>
-		            <artifactId>liberty-basic</artifactId>
-		            <version>8.5.5</version>
-		            <scope>provided</scope>
-		        </dependency>
-		        <dependency>
-		            <groupId>com.ibm.ws</groupId>
-		            <artifactId>liberty-endpoint</artifactId>
-		            <version>8.5.5</version>
-		            <scope>provided</scope>
-		        </dependency> 		        
+				      <groupId>com.ibm.tools.target</groupId>
+				      <artifactId>was-liberty</artifactId>
+				      <version>LATEST</version>
+				      <type>pom</type>
+				      <scope>provided</scope>
+				</dependency>
 			</dependencies>    		
     	</profile>
     	<profile>
@@ -118,31 +78,7 @@
 		            <artifactId>orb</artifactId>
 		            <version>8.5.0</version>
 		            <scope>provided</scope>
-		        </dependency>    		
-		        <dependency>
-		            <groupId>com.ibm.ws</groupId>
-		            <artifactId>liberty-connector</artifactId>
-		            <version>8.5.5</version>
-		            <scope>compile</scope>
-		        </dependency>
-		        <dependency>
-		            <groupId>com.ibm.ws</groupId>
-		            <artifactId>liberty-rest-connector</artifactId>
-		            <version>8.5.5</version>
-		            <scope>compile</scope>
-		        </dependency>
-		        <dependency>
-		            <groupId>com.ibm.ws</groupId>
-		            <artifactId>liberty-basic</artifactId>
-		            <version>8.5.5</version>
-		            <scope>compile</scope>
-		        </dependency>
-		        <dependency>
-		            <groupId>com.ibm.ws</groupId>
-		            <artifactId>liberty-endpoint</artifactId>
-		            <version>8.5.5</version>
-		            <scope>compile</scope>
-		        </dependency>    		
+		        </dependency>    		 		
     		</dependencies>
     	</profile>
     </profiles>
@@ -199,6 +135,13 @@
             <artifactId>commons-lang</artifactId>
             <version>2.5</version>
         </dependency>
+		<dependency>
+			<groupId>org.jenkins-ci.main</groupId>
+			<artifactId>jenkins-war</artifactId>
+			<type>war</type>
+			<version>1.645</version>
+			<scope>test</scope>
+		</dependency>
     </dependencies>
 
     <repositories>
@@ -206,6 +149,11 @@
             <id>repo.jenkins-ci.org</id>
             <url>http://repo.jenkins-ci.org/public/</url>
         </repository>
+	    <repository>
+	        <id>Liberty</id>
+	        <name>Liberty Repository</name>
+	        <url>http://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/wasdev/maven/repository/</url>
+	    </repository> 
     </repositories>
 
     <pluginRepositories>

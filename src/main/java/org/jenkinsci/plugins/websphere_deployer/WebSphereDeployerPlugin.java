@@ -420,6 +420,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         	service.setKeyStorePassword(env.expand(security.getClientKeyPassword()));
         	service.setTrustStoreLocation(new File(env.expand(security.getClientTrustFile())));
         	service.setTrustStorePassword(env.expand(security.getClientTrustPassword()));
+        	service.setTrustAll(security.isTrustAll());
         }
     }
 
@@ -463,6 +464,8 @@ public class WebSphereDeployerPlugin extends Notifier {
                                                @QueryParameter("port")String port,
                                                @QueryParameter("username")String username,
                                                @QueryParameter("password")String password,
+                                               @QueryParameter("trustAll")String trustAll,
+                                               @QueryParameter("verbose")String verbose,
                                                @QueryParameter("clientKeyFile")String clientKeyFile,
                                                @QueryParameter("clientTrustFile")String clientTrustFile,
                                                @QueryParameter("clientKeyPassword")String clientKeyPassword,
@@ -482,13 +485,15 @@ public class WebSphereDeployerPlugin extends Notifier {
                 service.setKeyStorePassword(clientKeyPassword);
                 service.setTrustStoreLocation(new File(clientTrustFile));
                 service.setTrustStorePassword(clientTrustPassword);
+                service.setTrustAll(Boolean.valueOf(trustAll));
+                service.setVerbose(Boolean.valueOf(verbose));
                 service.connect();
                 return FormValidation.ok("Connection Successful!");
             } catch (Exception e) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
                 PrintStream p = new PrintStream(out);
                 e.printStackTrace(p);
-                return FormValidation.error("Connection failed: " + new String(out.toByteArray()));
+                return FormValidation.error("Connection failed from Jenkins to https://"+ipAddress+":"+port+" => " + new String(out.toByteArray()));
             } finally {
                 service.disconnect();
             }

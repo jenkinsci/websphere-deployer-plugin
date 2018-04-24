@@ -16,6 +16,8 @@ import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import org.apache.commons.httpclient.util.HttpURLConnection;
+
 /**
 * This class provide various static methods that relax X509 certificate and
 * hostname verification while using the SSL over the HTTP protocol.
@@ -268,8 +270,7 @@ public final class SSLUtilities {
         * @return                the true boolean value
         * indicating the host name is trusted.
         */
-       public boolean verify(String hostname,
-               SSLSession session) {
+       public boolean verify(String hostname, SSLSession session) {
            return (true);
        } // verify
    } // FakeHostnameVerifier

@@ -17,7 +17,7 @@ public class WebSphereSecurity {
 	@DataBoundConstructor
 	public WebSphereSecurity(String username, String password,
 			String clientKeyFile, String clientKeyPassword,
-			String clientTrustFile, String clientTrustPassword, boolean trustAll) {
+			String clientTrustFile, String clientTrustPassword,boolean trustAll) {
 		this.username = username;
 		setPassword(password);
 		this.clientKeyFile = clientKeyFile;
@@ -26,6 +26,10 @@ public class WebSphereSecurity {
 		setClientTrustPassword(clientTrustPassword);
 		this.trustAll = trustAll;
 	}
+	
+	public boolean isTrustAll() {
+		return this.trustAll;
+	}
 
 	public String getUsername() {
 		return username;
@@ -33,10 +37,6 @@ public class WebSphereSecurity {
 
 	public void setUsername(String username) {
 		this.username = username;
-	}
-	
-	public boolean isTrustAll() {
-		return trustAll;
 	}
 
 	public String getPassword() {

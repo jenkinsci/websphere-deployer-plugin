@@ -464,12 +464,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                                                @QueryParameter("port")String port,
                                                @QueryParameter("username")String username,
                                                @QueryParameter("password")String password,
-                                               @QueryParameter("trustAll")String trustAll,
-                                               @QueryParameter("verbose")String verbose,
-                                               @QueryParameter("clientKeyFile")String clientKeyFile,
-                                               @QueryParameter("clientTrustFile")String clientTrustFile,
-                                               @QueryParameter("clientKeyPassword")String clientKeyPassword,
-                                               @QueryParameter("clientTrustPassword")String clientTrustPassword) throws IOException, ServletException {
+                                               @QueryParameter("trustAll")String trustAll) throws IOException, ServletException {
             WebSphereDeploymentService service = new WebSphereDeploymentService();
             try {
                 if(!service.isAvailable()) {
@@ -478,15 +473,10 @@ public class WebSphereDeployerPlugin extends Notifier {
                 }
                 service.setConnectorType(connectorType);
                 service.setHost(ipAddress);
-                service.setPort(port);
                 service.setUsername(username);
                 service.setPassword(password);
-                service.setKeyStoreLocation(new File(clientKeyFile));
-                service.setKeyStorePassword(clientKeyPassword);
-                service.setTrustStoreLocation(new File(clientTrustFile));
-                service.setTrustStorePassword(clientTrustPassword);
+                service.setPort(port);
                 service.setTrustAll(Boolean.valueOf(trustAll));
-                service.setVerbose(Boolean.valueOf(verbose));
                 service.connect();
                 return FormValidation.ok("Connection Successful!");
             } catch (Exception e) {

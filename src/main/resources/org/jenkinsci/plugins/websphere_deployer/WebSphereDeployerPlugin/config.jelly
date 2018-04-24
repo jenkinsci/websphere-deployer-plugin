@@ -21,10 +21,12 @@
 	          </f:entry>
 	          <f:entry title="Password" field="password">
 	            <f:password value="${instance.security.password}"/>
-	          </f:entry>
-	          <f:entry title="Trust SSL Certificate/Hostname when deploying" field="trustAll">
-	            <f:checkbox checked="${instance.security.trustAll}" default="true"/>
-	          </f:entry>  
+	          </f:entry> 
+		      <f:entry title="Trust SSL Certificates" field="trustAll">
+		        <f:checkbox checked="${instance.security.trustAll}" default="false"/>
+		      </f:entry> 
+			  <f:validateButton title="Test Connection" progress="Connecting to https://${instance.ipAddress}:${instance.port}"
+				       method="testConnection" with="ipAddress,connectorType,port,trustAll,username,password"/>
 	          <f:advanced>
 		          <f:entry title="Client Keystore File Path" field="clientKeyFile">
 		            <f:textbox value="${instance.security.clientKeyFile}"/>
@@ -41,9 +43,6 @@
 	          </f:advanced>
         </f:section>
 	  </f:optionalBlock>
-    <f:validateButton
-       title="Test Connection" progress="Connecting to https://${instance.ipAddress}:${instance.port}"
-       method="testConnection" with="ipAddress,connectorType,port,username,password,trustAll,verbose,clientKeyFile,clientTrustFile,clientKeyPassword,clientTrustPassword"/>
     <f:section title="WebSphere Deployment">
           <f:entry title="Operations" field="operations">
              <select name="operations">                

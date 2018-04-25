@@ -135,7 +135,7 @@
     <properties>
     	<jenkins.version>1.645</jenkins.version>
     	<was.version>8.5.0</was.version>
-    	<liberty.version>LATEST</liberty.version>
+    	<liberty.version>8.5.x.6</liberty.version>
 	</properties>
 
     <build>

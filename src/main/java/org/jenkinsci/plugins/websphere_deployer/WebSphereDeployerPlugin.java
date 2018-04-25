@@ -211,7 +211,14 @@ public class WebSphereDeployerPlugin extends Notifier {
 
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
-        if(shouldDeploy(build.getResult())) {
+    	if(build == null) {
+    		throw new IllegalStateException("Build cannot be null");
+    	}
+    	Result buildResult = build.getResult();
+    	if(buildResult == null) {
+    		throw new IllegalStateException("Build result cannot be null");
+    	}
+        if(shouldDeploy(buildResult)) {
         	WebSphereDeploymentService service = new WebSphereDeploymentService();
         	Artifact artifact = null;
             try {            	
@@ -261,7 +268,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                 service.disconnect();
             }
         } else {
-            listener.getLogger().println("Unable to deploy to IBM WebSphere Application Server, Build Result = " + build.getResult());
+            listener.getLogger().println("Unable to deploy to IBM WebSphere Application Server, Build Result = " + buildResult);
         }
         return true;
     }
@@ -282,13 +289,26 @@ public class WebSphereDeployerPlugin extends Notifier {
     	}
     }
     
-    private void rollbackArtifact(WebSphereDeploymentService service,AbstractBuild build,BuildListener listener,Artifact artifact) {    	    	
+    private void rollbackArtifact(WebSphereDeploymentService service,AbstractBuild build,BuildListener listener,Artifact artifact) {
+    	if(build == null) {
+    		log(listener,"Cannot rollack to previous verions: build is null");
+    	}
     	if(artifact == null) {
     		log(listener,"Cannot rollback to previous version: artifact is null");
     		return;
     	}
+    	FilePath workspace = build.getWorkspace();
+    	if(workspace == null) {
+    		log(listener,"Cannot rollback to previous version: workspace is null");
+    		return;
+    	}
+    	String remote = workspace.getRemote();
+    	if(remote == null) {
+    		log(listener,"Cannot rollback to previous version: remote path is null");
+    		return;
+    	}
     	log(listener,"Performing rollback of '"+artifact.getAppName()+"'");    	
-    	File installablePath = new File(build.getWorkspace().getRemote()+File.separator+"Rollbacks"+File.separator+artifact.getAppName()+"."+artifact.getTypeName());    	
+    	File installablePath = new File(remote+File.separator+"Rollbacks"+File.separator+artifact.getAppName()+"."+artifact.getTypeName());    	
     	if(installablePath.exists()) {
     		artifact.setSourcePath(installablePath);
     		try {
@@ -306,7 +326,17 @@ public class WebSphereDeployerPlugin extends Notifier {
     
     private void saveArtifactToRollbackRepository(AbstractBuild build,BuildListener listener,Artifact artifact) {
     	listener.getLogger().println("Performing save operations on '" + artifact.getAppName() + "' for future rollbacks");
-    	File rollbackDir = new File(build.getWorkspace().getRemote()+File.separator+"Rollbacks");
+    	FilePath workspace = build.getWorkspace();
+    	if(workspace == null) {
+    		log(listener, "Failed to save rollback to repository: Build workspace is null");
+    		throw new IllegalStateException("Failed to save rollback to repository: Build workspace is null");
+    	}
+    	String remote = workspace.getRemote();
+    	if(remote == null) {
+    		log(listener,"Failed to save rollback to repository: Build workspace remote path is null");
+    		throw new IllegalStateException("Failed to save rollback to repository: Build workspace remote path is null");
+    	}
+    	File rollbackDir = new File(remote+File.separator+"Rollbacks");
     	createIfNotExists(listener, rollbackDir);
     	logVerbose(listener, "Rollback Path: "+rollbackDir.getAbsolutePath());
     	File destination = new File(rollbackDir,artifact.getAppName()+"."+artifact.getTypeName());
@@ -402,9 +432,28 @@ public class WebSphereDeployerPlugin extends Notifier {
     }
 
     private FilePath[] gatherArtifactPaths(AbstractBuild build,BuildListener listener) throws Exception {
-        FilePath[] paths = build.getWorkspace().getParent().list(getArtifacts());
+    	if(build == null) {
+    		log(listener,"Cannot gather artifact paths: Build is null");
+    		throw new IllegalStateException("Cannot gather artifact paths: Build is null");
+    	}
+    	FilePath workspace = build.getWorkspace();
+    	if(workspace == null) {
+    		log(listener,"Cannot gather artifact paths: Build workspace is null");
+    		throw new IllegalStateException("Cannot gather artifact paths: Build workspace is null");
+    	}
+    	FilePath workspaceParent = workspace.getParent();
+    	if(workspaceParent == null) {
+    		log(listener,"Cannot gather artifact paths: Build workspace's parent folder is null");
+    		throw new IllegalStateException("Cannot gather artifact paths: Build workspace's parent folder is null");
+    	}
+    	String artifacts = getArtifacts();
+    	if(artifacts == null) {
+    		log(listener,"Cannot gather artifact paths: Artifacts are null");
+    		throw new IllegalStateException("Cannot gather artifact paths: Artifacts are null");
+    	}
+        FilePath[] paths = workspaceParent.list(artifacts);
         if(paths.length == 0) {
-            listener.getLogger().println("No deployable artifacts found in path: "+build.getWorkspace().getParent()+File.separator+getArtifacts());
+            listener.getLogger().println("No deployable artifacts found in path: "+workspaceParent+File.separator+artifacts);
             throw new Exception("No deployable artifacts found!");
         } else {
             listener.getLogger().println("The following artifacts will be deployed in this order...");

@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
+import java.nio.channels.IllegalSelectorException;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 
@@ -91,8 +92,12 @@ public class LibertyDeployerPlugin extends Notifier {
 
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
-
-        if(build.getResult().equals(Result.SUCCESS)) {
+    	Result buildResult = build.getResult();
+    	if(buildResult == null) {
+    		listener.getLogger().println("Error deploying to IBM WebSphere Liberty Profile: Build result is null");
+    		throw new IllegalStateException("Build result is null");
+    	}
+        if(buildResult.equals(Result.SUCCESS)) {
             LibertyDeploymentService service = new LibertyDeploymentService();
             try {
                 connect(listener,service);
@@ -187,9 +192,19 @@ public class LibertyDeployerPlugin extends Notifier {
     }
 
     private FilePath[] gatherArtifactPaths(AbstractBuild build,BuildListener listener) throws Exception {
-        FilePath[] paths = build.getWorkspace().getParent().list(getArtifacts());
+    	FilePath workspace = build.getWorkspace();
+    	if(workspace == null) {
+    		listener.getLogger().println("Failed to gather artifact paths: Build workspace is null");
+    		throw new IllegalStateException("Failed to gather artifact paths: Build workspace is null");
+    	}
+    	FilePath workspaceParent = workspace.getParent();
+    	if(workspaceParent == null) {
+    		listener.getLogger().println("Failed to gather artifact paths: Build workspace's parent path is null");
+    		throw new IllegalStateException("Failed to gather artifact paths: Build workspace's parent path is null");
+    	}
+        FilePath[] paths = workspaceParent.list(getArtifacts());
         if(paths.length == 0) {
-            listener.getLogger().println("No deployable artifacts found in path: "+build.getWorkspace().getParent()+ File.separator+getArtifacts());
+            listener.getLogger().println("No deployable artifacts found in path: "+workspaceParent+ File.separator+getArtifacts());
             throw new Exception("No deployable artifacts found!");
         } else {
             listener.getLogger().println("The following artifacts will be deployed in this order...");

@@ -330,9 +330,13 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             NotificationFilterSupport filterSupport = createFilterSupport();
             DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Install " + artifact.getAppName(),AppNotification.INSTALL,buildListener,verbose);            
             
-            synchronized(notifyListener) {
-            	notifyListener.wait();
-            }
+			while(!notifyListener.hasEventTriggered()) {
+				synchronized (notifyListener) {
+					if(!notifyListener.hasEventTriggered()) {
+						notifyListener.wait();	
+					}
+				}	
+			}
 
             if(!notifyListener.isSuccessful())
                throw new DeploymentServiceException("Application not successfully deployed: " + notifyListener.getMessage());            
@@ -357,9 +361,14 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             NotificationFilterSupport filterSupport = createFilterSupport();
             DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Update " + artifact.getAppName(),AppNotification.INSTALL,buildListener,verbose);            
             
-            synchronized(notifyListener) {
-            	notifyListener.wait();
-            }
+			while(!notifyListener.hasEventTriggered()) {
+				synchronized (notifyListener) {
+					if(!notifyListener.hasEventTriggered()) {
+						notifyListener.wait();	
+					}
+				}	
+			}
+
 
             if(!notifyListener.isSuccessful())
                throw new DeploymentServiceException("Application not successfully updated: " + notifyListener.getMessage());            
@@ -381,9 +390,14 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 			
 			appManagementProxy.uninstallApplication(appName,prefs,null);
 			
-			synchronized (notifyListener) {
-				notifyListener.wait();
+			while(!notifyListener.hasEventTriggered()) {
+				synchronized (notifyListener) {
+					if(!notifyListener.hasEventTriggered()) {
+						notifyListener.wait();	
+					}
+				}	
 			}
+
 			if (!notifyListener.isSuccessful()) {
 				throw new DeploymentServiceException("Application not successfully undeployed: "+ notifyListener.getMessage());
 			}
@@ -424,10 +438,13 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 			Thread.sleep(1000);			
 			totalSeconds++;
 			distributionListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, null,AppNotification.DISTRIBUTION_STATUS_NODE,buildListener,verbose);
+			
 			synchronized (distributionListener) {
-				appManagementProxy.getDistributionStatus(appName,new Hashtable<Object, Object>(), null);
-				distributionListener.wait();
-			}
+				if(!distributionListener.hasEventTriggered()) {
+					appManagementProxy.getDistributionStatus(appName,new Hashtable<Object, Object>(), null);
+					distributionListener.wait();
+				}
+			}	
 		}    	
 		return totalSeconds <= secondsToWait;
     }
@@ -443,12 +460,8 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 
     public boolean isArtifactInstalled(String name) {
         try {
-        	System.out.println("Checking if app, looking up JMX interface...");
         	AppManagement appManagement = AppManagementProxy.getJMXProxyForClient(getAdminClient());
-        	System.out.println("Getting JMX proxy client... AppManagementProxy Found: "+appManagement);
-        	System.out.println("Checking if app exists via AppMangementProxy...");
             boolean result = appManagement.checkIfAppExists(name, new Hashtable(), null);
-            System.out.println(name+" is installed on WebSphere: "+result);
             return result;
         } catch(AdminException e) {
             e.printStackTrace();

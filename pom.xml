@@ -1,10 +1,11 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>org.jenkins-ci.plugins</groupId>
-        <artifactId>plugin</artifactId>
-        <version>1.645</version><!-- which version of Jenkins is this plugin built against? -->
-    </parent>
+    
+	<parent>
+	    <groupId>org.jenkins-ci.plugins</groupId>
+	    <artifactId>plugin</artifactId>
+	    <version>2.2</version>
+	</parent>
 
     <artifactId>websphere-deployer</artifactId>
     <version>1.5.0-SNAPSHOT</version>
@@ -25,19 +26,19 @@
 		        <dependency>
 		            <groupId>com.ibm.ws</groupId>
 		            <artifactId>admin</artifactId>
-		            <version>9.0</version>
+		            <version>${was.version}</version>
 		            <scope>provided</scope>
 		        </dependency>
 		        <dependency>
 		            <groupId>com.ibm.ws</groupId>
 		            <artifactId>orb</artifactId>
-		            <version>9.0</version>
+		            <version>${was.version}</version>
 		            <scope>provided</scope>
 		        </dependency>
 		        <dependency>
 				      <groupId>com.ibm.tools.target</groupId>
 				      <artifactId>was-liberty</artifactId>
-				      <version>LATEST</version>
+				      <version>${liberty.version}</version>
 				      <type>pom</type>
 				      <scope>provided</scope>
 				</dependency>
@@ -53,19 +54,19 @@
 		        <dependency>
 		            <groupId>com.ibm.ws</groupId>
 		            <artifactId>admin</artifactId>
-		            <version>9.0</version>
+		            <version>${was.version}</version>
 		            <scope>compile</scope>
 		        </dependency>
 		        <dependency>
 		            <groupId>com.ibm.ws</groupId>
 		            <artifactId>orb</artifactId>
-		            <version>9.0</version>
+		            <version>${was.version}</version>
 		            <scope>compile</scope>
 		        </dependency>
 		        <dependency>
 				      <groupId>com.ibm.tools.target</groupId>
 				      <artifactId>was-liberty</artifactId>
-				      <version>LATEST</version>
+				      <version>${liberty.version}</version>
 				      <type>pom</type>
 				      <scope>provided</scope>
 				</dependency>
@@ -77,15 +78,22 @@
 		        <dependency>
 		            <groupId>com.ibm.ws</groupId>
 		            <artifactId>admin</artifactId>
-		            <version>8.5.0</version>
+		            <version>${was.version}</version>
 		            <scope>provided</scope>
 		        </dependency>
 		        <dependency>
 		            <groupId>com.ibm.ws</groupId>
 		            <artifactId>orb</artifactId>
-		            <version>8.5.0</version>
+		            <version>${was.version}</version>
 		            <scope>provided</scope>
-		        </dependency>    		 		
+		        </dependency> 
+		        <dependency>
+				      <groupId>com.ibm.tools.target</groupId>
+				      <artifactId>was-liberty</artifactId>
+				      <version>${liberty.version}</version>
+				      <type>pom</type>
+				      <scope>provided</scope>
+				</dependency>
     		</dependencies>
     	</profile>
     </profiles>
@@ -121,8 +129,14 @@
         <connection>scm:git:ssh://github.com/jenkinsci/websphere-deployer-plugin.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/jenkinsci/websphere-deployer-plugin.git</developerConnection>
         <url>https://github.com/jenkinsci/websphere-deployer-plugin</url>
-      <tag>HEAD</tag>
-  </scm>
+        <tag>HEAD</tag>
+    </scm>
+
+    <properties>
+    	<jenkins.version>1.645</jenkins.version>
+    	<was.version>8.5.0</was.version>
+    	<liberty.version>LATEST</liberty.version>
+	</properties>
 
     <build>
         <plugins>
@@ -152,22 +166,11 @@
     </dependencies>
 
     <repositories>
-        <repository>
-            <id>repo.jenkins-ci.org</id>
-            <url>http://repo.jenkins-ci.org/public/</url>
-        </repository>
 	    <repository>
 	        <id>Liberty</id>
 	        <name>Liberty Repository</name>
 	        <url>http://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/wasdev/maven/repository/</url>
 	    </repository> 
     </repositories>
-
-    <pluginRepositories>
-        <pluginRepository>
-            <id>repo.jenkins-ci.org</id>
-            <url>http://repo.jenkins-ci.org/public/</url>
-        </pluginRepository>
-    </pluginRepositories>
 
 </project>

@@ -82,17 +82,26 @@
                 	<j:when test="${instance.earLevel == '5' || instance.earLevel == '' || instance.earLevel == null}">
                     	<option value="5">Java EE 5</option>
                         <option value="6">Java EE 6</option>
-                        <option value="7">Java EE 7</option>                	
+                        <option value="7">Java EE 7</option> 
+                        <option value="8">Java EE 8</option>                	
                 	</j:when>
                     <j:when test="${instance.earLevel == '6'}">
                     	<option value="5">Java EE 5</option>
                         <option value="6" selected="selected">Java EE 6</option>
                         <option value="7">Java EE 7</option>
+                        <option value="8">Java EE 8</option>
                     </j:when>
                     <j:when test="${instance.earLevel == '7'}">
                     	<option value="5">Java EE 5</option>
                     	<option value="6">Java EE 6</option>
                         <option value="7" selected="selected">Java EE 7</option>
+                        <option value="8">Java EE 8</option>
+                    </j:when>
+                    <j:when test="${instance.earLevel == '8'}">
+                    	<option value="5">Java EE 5</option>
+                    	<option value="6">Java EE 6</option>
+                        <option value="7">Java EE 7</option>
+                        <option value="8" selected="selected">Java EE 8</option>
                     </j:when>                    
                 </j:choose>
             </select>

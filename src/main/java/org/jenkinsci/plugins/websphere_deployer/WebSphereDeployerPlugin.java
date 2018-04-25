@@ -489,6 +489,9 @@ public class WebSphereDeployerPlugin extends Notifier {
                 	}
                 	buffer.append(server.getTarget());
                 }
+                if(buffer.toString().trim().equals("")) {
+                	return FormValidation.warning("No server targets are configured in WebSphere");
+                }
                 return FormValidation.ok(buffer.toString());
             } catch (Exception e) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();

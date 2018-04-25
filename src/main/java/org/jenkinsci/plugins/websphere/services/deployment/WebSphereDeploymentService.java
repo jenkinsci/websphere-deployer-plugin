@@ -167,7 +167,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
 
     private String getApplicationXML(Artifact artifact,String earLevel) {
-        String contextRoot = getContextRoot(artifact);
+        String contextRoot = getContextRoot(artifact).trim();
         String warName = artifact.getSourcePath().getName();
         String displayName = StringUtils.trimToNull(artifact.getAppName());
         if(displayName == null) {
@@ -187,7 +187,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
     
     private String getSchemaVersion(String earLevel) {
-    	if(earLevel == "7") {
+    	if(earLevel == "7" || earLevel == "8") {
     		return "xsi:schemaLocation=\"http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/application_"+earLevel+".xsd\" version=\""+earLevel+"\"";
     	} else { //EAR is EE5 or EE6
     		return "xsi:schemaLocation=\"http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/application_"+earLevel+".xsd\" version=\""+earLevel+"\"";

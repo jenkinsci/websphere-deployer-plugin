@@ -5,7 +5,9 @@ import hudson.model.BuildListener;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -107,24 +109,40 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 
     public void generateEAR(Artifact artifact, File destination,String earLevel) {
         byte[] buf = new byte[1024];
+        ZipOutputStream out = null;
+        FileInputStream in = null;
         try {
-            ZipOutputStream out = new ZipOutputStream(new FileOutputStream(destination));
-            FileInputStream in = new FileInputStream(artifact.getSourcePath());
+            out = new ZipOutputStream(new FileOutputStream(destination));
+            in = new FileInputStream(artifact.getSourcePath());
             out.putNextEntry(new ZipEntry(artifact.getSourcePath().getName()));
             int len;
             while ((len = in.read(buf)) > 0) {
                 out.write(buf, 0, len);
             }
             out.closeEntry();
-            in.close();
             out.putNextEntry(new ZipEntry("META-INF/"));
             out.closeEntry();
             out.putNextEntry(new ZipEntry("META-INF/application.xml"));
-            out.write(getApplicationXML(artifact,earLevel).getBytes());
+            out.write(getApplicationXML(artifact,earLevel).getBytes(Charset.forName("UTF-8")));
             out.closeEntry();
             out.close();
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+        	if(out != null) {
+        		try {
+					out.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+        	}
+        	if(in != null) {
+        		try {
+					in.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+        	}
         }
     }
 
@@ -133,12 +151,13 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     If any exception is thrown, it will fall back to the WAR name.
      */
     private String getContextRoot(Artifact artifact) {
+    	ZipFile zipFile = null;
         try {
         	if(artifact.getContext() != null) {
         		return artifact.getContext();
         	}
             // open WAR and find ibm-web-ext.xml
-            ZipFile zipFile = new ZipFile(artifact.getSourcePath());
+            zipFile = new ZipFile(artifact.getSourcePath());
             ZipEntry webExt = zipFile.getEntry("WEB-INF/ibm-web-ext.xml");
             if(webExt != null) { //not an IBM based WAR
 	            InputStream webExtContent = zipFile.getInputStream(webExt);
@@ -158,6 +177,14 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         } catch (Exception e) {            
         	e.printStackTrace();
             return getContextRootFromWarName(artifact);
+        } finally {
+        	if(zipFile != null) {
+        		try {
+					zipFile.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+        	}
         }
     }
     
@@ -187,7 +214,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
     
     private String getSchemaVersion(String earLevel) {
-    	if(earLevel == "7" || earLevel == "8") {
+    	if(earLevel.equals("7") || earLevel.equals("8")) {
     		return "xsi:schemaLocation=\"http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/application_"+earLevel+".xsd\" version=\""+earLevel+"\"";
     	} else { //EAR is EE5 or EE6
     		return "xsi:schemaLocation=\"http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/application_"+earLevel+".xsd\" version=\""+earLevel+"\"";
@@ -257,14 +284,14 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         	preferences.put(AppConstants.APPDEPL_MAP_SHAREDLIB, artifact.getSharedLibName());
         }        
         if(!artifact.isJspReloading()) {        	
-        	preferences.put(AppConstants.APPDEPL_JSP_RELOADINTERVAL, new Integer(0));
+        	preferences.put(AppConstants.APPDEPL_JSP_RELOADINTERVAL, Integer.valueOf(0));
         } else {
-        	preferences.put(AppConstants.APPDEPL_JSP_RELOADINTERVAL, new Integer(15));
+        	preferences.put(AppConstants.APPDEPL_JSP_RELOADINTERVAL, Integer.valueOf(15));
         }
         if(!artifact.isReloading()) {
-        	preferences.put(AppConstants.APPDEPL_RELOADINTERVAL, new Integer(0));
+        	preferences.put(AppConstants.APPDEPL_RELOADINTERVAL, Integer.valueOf(0));
         } else {        	
-        	preferences.put(AppConstants.APPDEPL_RELOADINTERVAL, new Integer(15));
+        	preferences.put(AppConstants.APPDEPL_RELOADINTERVAL, Integer.valueOf(15));
         }
         if(StringUtils.trimToNull(artifact.getAppName()) != null) {
         	preferences.put(AppConstants.APPDEPL_APPNAME, artifact.getAppName());

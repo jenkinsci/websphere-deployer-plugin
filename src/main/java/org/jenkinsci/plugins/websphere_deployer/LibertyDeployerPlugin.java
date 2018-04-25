@@ -14,6 +14,7 @@ import hudson.tasks.Publisher;
 import hudson.util.FormValidation;
 import hudson.util.Scrambler;
 import net.sf.json.JSONObject;
+
 import org.jenkinsci.plugins.websphere.services.deployment.Artifact;
 import org.jenkinsci.plugins.websphere.services.deployment.LibertyDeploymentService;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -21,10 +22,13 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
 import javax.servlet.ServletException;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 
 /**
@@ -102,10 +106,19 @@ public class LibertyDeployerPlugin extends Notifier {
                 }
             } catch (Exception e) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
-                PrintStream p = new PrintStream(out);
-                e.printStackTrace(p);
-                listener.getLogger().println("Error deploying to IBM WebSphere Liberty Profile: "+new String(out.toByteArray()));
-                build.setResult(Result.FAILURE);
+                PrintStream p = null;
+				try {
+					p = new PrintStream(out,true,"UTF-8");
+	                e.printStackTrace(p);
+	                listener.getLogger().println("Error deploying to IBM WebSphere Liberty Profile: "+new String(out.toByteArray(),"UTF-8"));
+	                build.setResult(Result.FAILURE);
+				} catch (UnsupportedEncodingException e1) {
+					e1.printStackTrace();
+				} finally {
+					if(p != null) {
+						p.close();
+					}
+				}
             } finally {
                 try {
                     disconnect(listener,service);
@@ -231,9 +244,9 @@ public class LibertyDeployerPlugin extends Notifier {
                 return FormValidation.ok("Connection Successful!");
             } catch (Exception e) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
-                PrintStream p = new PrintStream(out);
+                PrintStream p = new PrintStream(out,true,"UTF-8");
                 e.printStackTrace(p);
-                return FormValidation.error("Connection failed: " + new String(out.toByteArray()));
+                return FormValidation.error("Connection failed: " + new String(out.toByteArray(),"UTF-8"));
             } finally {
                 service.disconnect();
             }

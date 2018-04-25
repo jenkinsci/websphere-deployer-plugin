@@ -18,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.util.List;
 
 import javax.servlet.ServletException;
@@ -238,10 +239,19 @@ public class WebSphereDeployerPlugin extends Notifier {
                 }
             } catch (Exception e) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
-                PrintStream p = new PrintStream(out);
+                PrintStream p = null;
+				try {
+					p = new PrintStream(out,true,"UTF-8");
+				} catch (UnsupportedEncodingException e2) {
+					e2.printStackTrace();
+				}
                 e.printStackTrace(p);
                 if(verbose) {
-                	logVerbose(listener,"Error deploying to IBM WebSphere Application Server: "+new String(out.toByteArray()));
+                	try {
+						logVerbose(listener,"Error deploying to IBM WebSphere Application Server: "+new String(out.toByteArray(),"UTF-8"));
+					} catch (UnsupportedEncodingException e1) {
+						e1.printStackTrace();
+					}
                 } else {
                 	log(listener,"Error deploying to IBM WebSphere Application Server: "+e.getMessage());
                 }
@@ -495,9 +505,9 @@ public class WebSphereDeployerPlugin extends Notifier {
                 return FormValidation.ok(buffer.toString());
             } catch (Exception e) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
-                PrintStream p = new PrintStream(out);
+                PrintStream p = new PrintStream(out,true,"UTF-8");
                 e.printStackTrace(p);
-                return FormValidation.error("Failed to list targets =>" + new String(out.toByteArray()));
+                return FormValidation.error("Failed to list targets =>" + new String(out.toByteArray(),"UTF-8"));
             } finally {
                 service.disconnect();
             }
@@ -525,9 +535,9 @@ public class WebSphereDeployerPlugin extends Notifier {
                 return FormValidation.ok("Connection Successful!");
             } catch (Exception e) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
-                PrintStream p = new PrintStream(out);
+                PrintStream p = new PrintStream(out,true,"UTF-8");
                 e.printStackTrace(p);
-                return FormValidation.error("Connection failed from Jenkins to https://"+ipAddress+":"+port+" => " + new String(out.toByteArray()));
+                return FormValidation.error("Connection failed from Jenkins to https://"+ipAddress+":"+port+" => " + new String(out.toByteArray(),"UTF-8"));
             } finally {
                 service.disconnect();
             }

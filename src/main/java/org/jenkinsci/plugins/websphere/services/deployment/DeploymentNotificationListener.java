@@ -57,7 +57,7 @@ public class DeploymentNotificationListener implements NotificationListener
 
 				synchronized(this) {
 					eventTriggered = true;
-					this.notifyAll();
+					this.notify();
 				}
 			} catch (Exception e) {
 				e.printStackTrace();

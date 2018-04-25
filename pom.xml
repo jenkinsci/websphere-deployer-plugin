@@ -8,7 +8,7 @@
 	</parent>
 
     <artifactId>websphere-deployer</artifactId>
-    <version>1.5.0-SNAPSHOT</version>
+    <version>1.5.5</version>
     <packaging>hpi</packaging>
     <name>WebSphere Deployer Plugin</name>
     <inceptionYear>2013</inceptionYear>
@@ -129,7 +129,7 @@
         <connection>scm:git:ssh://github.com/jenkinsci/websphere-deployer-plugin.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/jenkinsci/websphere-deployer-plugin.git</developerConnection>
         <url>https://github.com/jenkinsci/websphere-deployer-plugin</url>
-        <tag>HEAD</tag>
+        <tag>websphere-deployer-1.5.5</tag>
     </scm>
 
     <properties>

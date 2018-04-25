@@ -71,6 +71,8 @@
           	<f:textarea default="WebSphere:cell=[cellname],node=[nodeName],server=[serverName]">
           	</f:textarea>
           </f:entry>
+          	<f:validateButton title="Show Available Targets" progress="Loading available targets"
+				       method="loadTargets" with="ipAddress,connectorType,port,trustAll,username,password"/>
           <f:entry title="Deployment Timeout (minutes)" field="deploymentTimeout">
             <f:textbox />
           </f:entry>       

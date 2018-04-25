@@ -18,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.List;
 
 import javax.servlet.ServletException;
 
@@ -26,6 +27,7 @@ import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.websphere.services.deployment.Artifact;
 import org.jenkinsci.plugins.websphere.services.deployment.DeploymentServiceException;
+import org.jenkinsci.plugins.websphere.services.deployment.Server;
 import org.jenkinsci.plugins.websphere.services.deployment.WebSphereDeploymentService;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -457,6 +459,45 @@ public class WebSphereDeployerPlugin extends Notifier {
 
         public DescriptorImpl() {
             load();
+        }
+        
+        public FormValidation doLoadTargets(@QueryParameter("ipAddress")String ipAddress,
+                @QueryParameter("connectorType")String connectorType,
+                @QueryParameter("port")String port,
+                @QueryParameter("username")String username,
+                @QueryParameter("password")String password,
+                @QueryParameter("trustAll")String trustAll) throws IOException, ServletException {
+            WebSphereDeploymentService service = new WebSphereDeploymentService();
+            try {
+                if(!service.isAvailable()) {
+                    String destination = "<Jenkins_Root>"+File.separator+"plugins"+File.separator+"websphere-deployer"+File.separator+"WEB-INF"+File.separator+"lib"+File.separator;
+                    return FormValidation.warning("Cannot find the required IBM WebSphere Application Server jar files in '"+destination+"'. Please copy them from IBM WebSphere Application Server (see plugin documentation)");
+                }
+                service.setConnectorType(connectorType);
+                service.setHost(ipAddress);
+                service.setUsername(username);
+                service.setPassword(password);
+                service.setPort(port);
+                service.setTrustAll(Boolean.valueOf(trustAll));
+                service.connect();
+                List<Server> servers = service.listServers();
+                StringBuffer buffer = new StringBuffer();
+                buffer.append("\r\n\r\n");
+                for(Server server:servers) {
+                	if(buffer.length() > 0) {
+                		buffer.append("\r\n");
+                	}
+                	buffer.append(server.getTarget());
+                }
+                return FormValidation.ok(buffer.toString());
+            } catch (Exception e) {
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                PrintStream p = new PrintStream(out);
+                e.printStackTrace(p);
+                return FormValidation.error("Failed to list targets =>" + new String(out.toByteArray()));
+            } finally {
+                service.disconnect();
+            }
         }
 
         public FormValidation doTestConnection(@QueryParameter("ipAddress")String ipAddress,

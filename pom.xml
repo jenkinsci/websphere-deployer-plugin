@@ -133,7 +133,7 @@
     </scm>
 
     <properties>
-    	<jenkins.version>1.645</jenkins.version>
+    	<jenkins.version>1.596.2</jenkins.version>
     	<was.version>8.5.0</was.version>
     	<liberty.version>8.5.x.6</liberty.version>
 	</properties>
@@ -160,7 +160,7 @@
 			<groupId>org.jenkins-ci.main</groupId>
 			<artifactId>jenkins-war</artifactId>
 			<type>war</type>
-			<version>1.645</version>
+			<version>${jenkins.version}</version>
 			<scope>test</scope>
 		</dependency>
     </dependencies>

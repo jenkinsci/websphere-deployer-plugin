@@ -8,7 +8,7 @@
 	</parent>
 
     <artifactId>websphere-deployer</artifactId>
-    <version>1.6.1-SNAPSHOT</version>
+    <version>1.6.0-SNAPSHOT</version>
     <packaging>hpi</packaging>
     <name>WebSphere Deployer Plugin</name>
     <inceptionYear>2013</inceptionYear>

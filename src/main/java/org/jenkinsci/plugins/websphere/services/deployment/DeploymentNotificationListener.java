@@ -39,8 +39,7 @@ public class DeploymentNotificationListener implements NotificationListener
       adminClient.addNotificationListener(objectName, this, filterSupport, handBack);
    }
 
-   public void handleNotification(Notification notification, Object handback)
-   {
+   public void handleNotification(Notification notification, Object handback) {
       AppNotification appNotification = (AppNotification) notification.getUserData();
       if(verbose) {
     	  listener.getLogger().println(appNotification.taskName+"] "+appNotification.message+"["+appNotification.taskStatus+"]");

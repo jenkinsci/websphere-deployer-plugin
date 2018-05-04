@@ -59,6 +59,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final String applicationName;
     private final String virtualHost;
     private final String sharedLibName;
+    private final String edition;
     private final boolean precompile;
     private final boolean reloading;
     private final boolean jspReloading;
@@ -83,6 +84,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    String applicationName,
                                    String virtualHost,
                                    String sharedLibName,
+                                   String edition,
                                    boolean precompile,
                                    boolean reloading,
                                    boolean jspReloading,
@@ -102,6 +104,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.operations = operations;
         this.earLevel = earLevel;
         this.deploymentTimeout = deploymentTimeout;
+        this.edition = edition;
         this.precompile = precompile;
         this.reloading = reloading;
         this.jspReloading = jspReloading;
@@ -115,6 +118,10 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.applicationName = applicationName;
         this.virtualHost = virtualHost;
         this.sharedLibName = sharedLibName;
+    }
+    
+    public String getEdition() {
+    	return edition;
     }
     
     public String getClassLoaderOrder() {
@@ -227,19 +234,19 @@ public class WebSphereDeployerPlugin extends Notifier {
             	service.connect();                	               
                 for(FilePath path:gatherArtifactPaths(build, listener)) {
                     artifact = createArtifact(path,listener,service);   
-                    log(listener,"Artifact is being deployed with Virtual Host: "+artifact.getVirtualHost());
-                    stopArtifact(artifact.getAppName(),listener,service);
+                    log(listener,"Artifact is being deployed to virtual host: "+artifact.getVirtualHost());
+                    stopArtifact(artifact,listener,service);
                     if(getOperations().equals(OPERATION_REINSTALL)) {
-                    	uninstallArtifact(artifact.getAppName(),listener,service);
+                    	uninstallArtifact(artifact,listener,service);
                     	deployArtifact(artifact,listener,service);
                     } else { //otherwise update application
-                    	if(!service.isArtifactInstalled(artifact.getAppName())) {
+                    	if(!service.isArtifactInstalled(artifact)) {
                     		deployArtifact(artifact, listener, service); //do initial deployment
                     	} else {
                     		updateArtifact(artifact,listener,service);
                     	}
                     }
-                    startArtifact(artifact.getAppName(),listener,service);
+                    startArtifact(artifact,listener,service);
                     if(rollback) {
                     	saveArtifactToRollbackRepository(build, listener, artifact);
                     }
@@ -291,7 +298,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     
     private void rollbackArtifact(WebSphereDeploymentService service,AbstractBuild build,BuildListener listener,Artifact artifact) {
     	if(build == null) {
-    		log(listener,"Cannot rollack to previous verions: build is null");
+    		log(listener,"Cannot rollback to previous verions: build is null");
     	}
     	if(artifact == null) {
     		log(listener,"Cannot rollback to previous version: artifact is null");
@@ -313,7 +320,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     		artifact.setSourcePath(installablePath);
     		try {
     			updateArtifact(artifact, listener, service);
-    			startArtifact(artifact.getAppName(),listener,service);
+    			startArtifact(artifact,listener,service);
     			log(listener,"Rollback of '"+artifact.getAppName()+"' was successful");
     		} catch(Exception e) {
     			e.printStackTrace();
@@ -367,31 +374,35 @@ public class WebSphereDeployerPlugin extends Notifier {
         service.installArtifact(artifact);
     }
 
-    private void uninstallArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
-        if(service.isArtifactInstalled(appName)) {
-            listener.getLogger().println("Uninstalling Old Application '"+appName+"'...");
-            service.uninstallArtifact(appName);
+    private void uninstallArtifact(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) throws Exception {
+        if(service.isArtifactInstalled(artifact)) {
+            listener.getLogger().println("Uninstalling Old Application '"+artifact.getAppName()+"'...");
+            service.uninstallArtifact(artifact);
         }
     }
 
-    private void startArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
-    	listener.getLogger().println("Starting Application '"+appName+"'...");
+    private void startArtifact(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) throws Exception {
+		if(StringUtils.trimToNull(artifact.getEdition()) != null) {
+			listener.getLogger().println(artifact.getAppName()+ " will not be started automatically because 'Edition' management was used in the jenkins configuration");
+			return;
+		}
+    	listener.getLogger().println("Starting Application '"+artifact.getAppName()+"'...");
     	try {
-    		service.startArtifact(appName, Integer.parseInt(getDeploymentTimeout()));
+    		service.startArtifact(artifact, Integer.parseInt(getDeploymentTimeout()));
     	} catch(NumberFormatException e) {
-    		service.startArtifact(appName);
+    		service.startArtifact(artifact);
     	}
     }
 
-    private void stopArtifact(String appName,BuildListener listener,WebSphereDeploymentService service) throws Exception {
-        if(service.isArtifactInstalled(appName)) {
-            listener.getLogger().println("Stopping Old Application '"+appName+"'...");
-            service.stopArtifact(appName);
+    private void stopArtifact(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) throws Exception {
+        if(service.isArtifactInstalled(artifact)) {
+            listener.getLogger().println("Stopping Existing Application '"+artifact.getAppName()+"'...");
+            service.stopArtifact(artifact);
         }
     }
     
     private void updateArtifact(Artifact artifact,BuildListener listener,WebSphereDeploymentService service) throws Exception {
-        if(service.isArtifactInstalled(artifact.getAppName())) {
+        if(service.isArtifactInstalled(artifact)) {
             listener.getLogger().println("Updating '" + artifact.getAppName() + "' on IBM WebSphere Application Server");
             service.updateArtifact(artifact);
         }
@@ -407,7 +418,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         if(StringUtils.trimToNull(context) != null) {
         	artifact.setContext(context);
         }                
-        if(virtualHost == null || virtualHost.trim().equals("")) {
+        if(StringUtils.trimToNull(virtualHost) == null) {
         	artifact.setVirtualHost("default_host");
         } else {
         	artifact.setVirtualHost(virtualHost);
@@ -418,6 +429,9 @@ public class WebSphereDeployerPlugin extends Notifier {
         artifact.setInstallPath(installPath);
         artifact.setJspReloading(reloading);
         artifact.setDistribute(distribute);
+        if(StringUtils.trimToNull(edition) != null) {
+        	artifact.setEdition(edition);	
+        }
         artifact.setPrecompile(isPrecompile());
         artifact.setSourcePath(new File(path.getRemote()));
         if(StringUtils.trimToNull(applicationName) != null) {

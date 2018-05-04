@@ -6,3 +6,5 @@ bin/
 work/
 .classpath
 .options
+/target/
+/target/

@@ -103,11 +103,11 @@ public class LibertyDeployerPlugin extends Notifier {
                 connect(listener,service);
                 for(FilePath path:gatherArtifactPaths(build, listener)) {
                     Artifact artifact = createArtifact(path,listener);
-                    stopArtifact(artifact.getAppName(),listener,service);
-                    uninstallArtifact(artifact.getAppName(),listener,service);
+                    stopArtifact(artifact,listener,service);
+                    uninstallArtifact(artifact,listener,service);
                     deployArtifact(artifact,listener,service);
                     Thread.sleep(2000); //wait 2 seconds for deployment to settle
-                    startArtifact(artifact.getAppName(),listener,service);
+                    startArtifact(artifact,listener,service);
                 }
             } catch (Exception e) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -167,17 +167,17 @@ public class LibertyDeployerPlugin extends Notifier {
         service.disconnect();
     }
 
-    private void stopArtifact(String appName,BuildListener listener,LibertyDeploymentService service) throws Exception {
-        if(service.isArtifactInstalled(appName)) {
-            listener.getLogger().println("Stopping Old Application '"+appName+"'...");
-            service.stopArtifact(appName);
+    private void stopArtifact(Artifact artifact,BuildListener listener,LibertyDeploymentService service) throws Exception {
+        if(service.isArtifactInstalled(artifact)) {
+            listener.getLogger().println("Stopping Old Application '"+artifact+"'...");
+            service.stopArtifact(artifact);
         }
     }
 
-    private void uninstallArtifact(String appName,BuildListener listener,LibertyDeploymentService service) throws Exception {
-        if(service.isArtifactInstalled(appName)) {
-            listener.getLogger().println("Uninstalling Old Application '"+appName+"'...");
-            service.uninstallArtifact(appName);
+    private void uninstallArtifact(Artifact artifact,BuildListener listener,LibertyDeploymentService service) throws Exception {
+        if(service.isArtifactInstalled(artifact)) {
+            listener.getLogger().println("Uninstalling Old Application '"+artifact.getAppName()+"'...");
+            service.uninstallArtifact(artifact);
         }
     }
 
@@ -186,9 +186,9 @@ public class LibertyDeployerPlugin extends Notifier {
         service.installArtifact(artifact);
     }
 
-    private void startArtifact(String appName,BuildListener listener,LibertyDeploymentService service) throws Exception {
-        listener.getLogger().println("Starting Application '"+appName+"'...");
-        service.startArtifact(appName);
+    private void startArtifact(Artifact artifact,BuildListener listener,LibertyDeploymentService service) throws Exception {
+        listener.getLogger().println("Starting Application '"+artifact.getAppName()+"'...");
+        service.startArtifact(artifact);
     }
 
     private FilePath[] gatherArtifactPaths(AbstractBuild build,BuildListener listener) throws Exception {

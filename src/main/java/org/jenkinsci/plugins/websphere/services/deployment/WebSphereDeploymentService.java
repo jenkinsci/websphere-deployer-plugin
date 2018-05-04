@@ -26,12 +26,12 @@ import javax.enterprise.deploy.spi.Target;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotificationFilterSupport;
 import javax.management.ObjectName;
+import javax.net.ssl.SSLSocketFactory;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.soap.rpc.Call;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -45,6 +45,9 @@ import com.ibm.websphere.management.application.client.AppDeploymentController;
 import com.ibm.websphere.management.application.client.AppDeploymentTask;
 import com.ibm.websphere.management.exception.AdminException;
 import com.ibm.websphere.management.exception.ConnectorException;
+import com.ibm.ws.management.application.AppUtils;
+import com.ibm.ws.management.application.task.ConfigRepoHelper;
+import com.ibm.ws.sm.workspace.RepositoryContext;
 
 /**
  * @author Greg Peters
@@ -68,6 +71,10 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
      *   GitHub discussion</a> for a reference.
      */
     private Properties storedProperties;
+    
+    public WebSphereDeploymentService() {
+    	System.setProperty("com.ibm.websphere.thinclient", "true");
+    }
 
     public List<Server> listServers() {
         try {
@@ -251,71 +258,75 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
     
     private Hashtable<String,Object> buildDeploymentPreferences(Artifact artifact) throws Exception {
-        Hashtable<String,Object> preferences = new Hashtable<String,Object>();
+    	if(artifact.getPreferences() != null) {
+    		return artifact.getPreferences();
+    	}
+        Hashtable<String,Object> defaultBindingPreferences = new Hashtable<String,Object>();
         Properties defaultBinding = new Properties();
-        preferences.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
+        defaultBindingPreferences.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
         /** handle default binding **/
-        if(artifact.getVirtualHost() != null && !artifact.getVirtualHost().trim().equals("")) {
+        if(StringUtils.trimToNull(artifact.getVirtualHost()) != null) { 
         	defaultBinding.put(AppConstants.APPDEPL_DFLTBNDG_VHOST, artifact.getVirtualHost());	
         }        
         /** end handle default binding **/
-        preferences.put(AppConstants.APPDEPL_DFLTBNDG, defaultBinding);                
-        AppDeploymentController controller = AppDeploymentController.readArchive(artifact.getSourcePath().getAbsolutePath(), preferences);
+        defaultBindingPreferences.put(AppConstants.APPDEPL_DFLTBNDG, defaultBinding);                
+        AppDeploymentController controller = AppDeploymentController.readArchive(artifact.getSourcePath().getAbsolutePath(), defaultBindingPreferences);
         
         String[] validationResult = controller.validate();
         if (validationResult != null && validationResult.length > 0) {
            throw new DeploymentServiceException("Unable to complete all task data for deployment preparation. Reason: " + Arrays.toString(validationResult));
         }
 
-        //controller.saveAndClose(); //block editing of EAR upon validation
-
-        preferences.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
-        preferences.put(AppConstants.APPDEPL_ARCHIVE_UPLOAD, Boolean.TRUE);
-        preferences.put(AppConstants.APPDEPL_PRECOMPILE_JSP, artifact.isPrecompile());
-        preferences.put(AppConstants.APPDEPL_DISTRIBUTE_APP, artifact.isDistribute());
-        preferences.put(AppConstants.APPDEPL_JSP_RELOADENABLED, artifact.isJspReloading());
-        preferences.put(AppConstants.APPDEPL_RELOADENABLED, artifact.isReloading());
-        if(artifact.getVirtualHost() != null && !artifact.getVirtualHost().trim().equals("")) {
-            preferences.put(AppConstants.APPDEPL_VIRTUAL_HOST, artifact.getVirtualHost());
-            preferences.put(AppConstants.APPDEPL_RESOURCE_MAPPER_VIRTUAL_HOST, artifact.getVirtualHost());	
+        controller.saveAndClose(); //block editing of EAR upon validation
+        
+		Hashtable<String, Object> options = controller.getAppOptions();
+        options.put(AppConstants.APPDEPL_LOCALE, Locale.getDefault());
+        options.put(AppConstants.APPDEPL_ARCHIVE_UPLOAD, Boolean.TRUE);
+        options.put(AppConstants.APPDEPL_PRECOMPILE_JSP, artifact.isPrecompile());
+        options.put(AppConstants.APPDEPL_DISTRIBUTE_APP, artifact.isDistribute());
+        options.put(AppConstants.APPDEPL_JSP_RELOADENABLED, artifact.isJspReloading());
+        options.put(AppConstants.APPDEPL_RELOADENABLED, artifact.isReloading());
+        if(StringUtils.trimToNull(artifact.getEdition()) != null) {
+        	options.put(AppConstants.APPDEPL_EDITION, artifact.getEdition());
+        	options.put(AppConstants.APPDEPL_EDITION_DESC, String.valueOf("Edition Timestamp: "+System.currentTimeMillis()));
+        	
         }
-        if(artifact.getSharedLibName() != null && !artifact.getSharedLibName().trim().equals("")) {
-        	preferences.put(AppConstants.APPDEPL_SHAREDLIB_NAME, artifact.getSharedLibName());
-        	preferences.put(AppConstants.APPDEPL_MAP_SHAREDLIB, artifact.getSharedLibName());
+        if(StringUtils.trimToNull(artifact.getSharedLibName()) != null) {
+        	options.put(AppConstants.APPDEPL_SHAREDLIB_NAME, artifact.getSharedLibName());
+        	options.put(AppConstants.APPDEPL_MAP_SHAREDLIB, artifact.getSharedLibName());
         }        
         if(!artifact.isJspReloading()) {        	
-        	preferences.put(AppConstants.APPDEPL_JSP_RELOADINTERVAL, Integer.valueOf(0));
+        	options.put(AppConstants.APPDEPL_JSP_RELOADINTERVAL, Integer.valueOf(0));
         } else {
-        	preferences.put(AppConstants.APPDEPL_JSP_RELOADINTERVAL, Integer.valueOf(15));
+        	options.put(AppConstants.APPDEPL_JSP_RELOADINTERVAL, Integer.valueOf(15));
         }
         if(!artifact.isReloading()) {
-        	preferences.put(AppConstants.APPDEPL_RELOADINTERVAL, Integer.valueOf(0));
+        	options.put(AppConstants.APPDEPL_RELOADINTERVAL, Integer.valueOf(0));
         } else {        	
-        	preferences.put(AppConstants.APPDEPL_RELOADINTERVAL, Integer.valueOf(15));
+        	options.put(AppConstants.APPDEPL_RELOADINTERVAL, Integer.valueOf(15));
         }
         if(StringUtils.trimToNull(artifact.getAppName()) != null) {
-        	preferences.put(AppConstants.APPDEPL_APPNAME, artifact.getAppName());
+        	options.put(AppConstants.APPDEPL_APPNAME, artifact.getAppName());
         }
         if(StringUtils.trimToNull(artifact.getInstallPath()) != null) {
-        	preferences.put(AppConstants.APPDEPL_INSTALL_DIR, artifact.getInstallPath());	
+        	options.put(AppConstants.APPDEPL_INSTALL_DIR, artifact.getInstallPath());	
         }        
         if(StringUtils.trimToNull(artifact.getClassLoaderOrder()) != null) {
-        	preferences.put(AppConstants.APPDEPL_CLASSLOADINGMODE,artifact.getClassLoaderOrder());
+        	options.put(AppConstants.APPDEPL_CLASSLOADINGMODE,artifact.getClassLoaderOrder());
         }          
         if(StringUtils.trimToNull(artifact.getClassLoaderPolicy()) != null) {
-        	preferences.put(AppConstants.APPDEPL_CLASSLOADERPOLICY,artifact.getClassLoaderPolicy());
+        	options.put(AppConstants.APPDEPL_CLASSLOADERPOLICY,artifact.getClassLoaderPolicy());
         }
-        if(artifact.getContext() != null) {
-        	buildListener.getLogger().println("Setting context root to: "+artifact.getContext());
-        	preferences.put(AppConstants.APPDEPL_WEBMODULE_CONTEXTROOT, artifact.getContext());
-        	preferences.put(AppConstants.APPDEPL_WEB_CONTEXTROOT, artifact.getContext());
+        if(StringUtils.trimToNull(artifact.getContext()) != null) {
+        	options.put(AppConstants.APPDEPL_WEBMODULE_CONTEXTROOT, artifact.getContext());
+        	options.put(AppConstants.APPDEPL_WEB_CONTEXTROOT, artifact.getContext());
         }  
 
         Hashtable<String,Object> module2server = new Hashtable<String,Object>();
-        buildListener.getLogger().println("Deploying to targets: "+getFormattedTargets(artifact.getTargets()));
         module2server.put("*", getFormattedTargets(artifact.getTargets()));
-        preferences.put(AppConstants.APPDEPL_MODULE_TO_SERVER, module2server);          
-        return preferences;
+        options.put(AppConstants.APPDEPL_MODULE_TO_SERVER, module2server); 
+        artifact.setPreferences(options);
+        return options;
     }
 
     public void installArtifact(Artifact artifact) {
@@ -323,12 +334,11 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             throw new DeploymentServiceException("Cannot install artifact, no connection to IBM WebSphere Application Server exists");
         }
         try {        	
-        	Hashtable<String,Object> preferences = buildDeploymentPreferences(artifact);            
-            AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
-            appManagementProxy.installApplication(artifact.getSourcePath().getAbsolutePath(),artifact.getAppName(),preferences, null);
-            
             NotificationFilterSupport filterSupport = createFilterSupport();
             DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Install " + artifact.getAppName(),AppNotification.INSTALL,buildListener,verbose);            
+            
+            AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
+            appManagementProxy.installApplication(artifact.getSourcePath().getAbsolutePath(),artifact.getAppName(),buildDeploymentPreferences(artifact), null);
             
 			while(!notifyListener.hasEventTriggered()) {
 				synchronized (notifyListener) {
@@ -338,9 +348,9 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 				}	
 			}
 
-            if(!notifyListener.isSuccessful())
-               throw new DeploymentServiceException("Application not successfully deployed: " + notifyListener.getMessage());            
-            
+            if(!notifyListener.isSuccessful()) {
+               throw new DeploymentServiceException("Application not successfully deployed: " + notifyListener.getMessage());
+            }
         } catch (Exception e) {
             e.printStackTrace();
             throw new DeploymentServiceException("Failed to install artifact: "+e.getMessage());
@@ -352,14 +362,11 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
             throw new DeploymentServiceException("Cannot update artifact, no connection to IBM WebSphere Application Server exists");
         }		
         try {
-        	Hashtable<String,Object> preferences = buildDeploymentPreferences(artifact);
+            NotificationFilterSupport filterSupport = createFilterSupport();
+            DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Update " + artifact.getAppName(),AppNotification.INSTALL,buildListener,verbose);
             
             AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
-            
-            appManagementProxy.redeployApplication(artifact.getSourcePath().getAbsolutePath(),artifact.getAppName(),preferences, null);
-            
-            NotificationFilterSupport filterSupport = createFilterSupport();
-            DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(), filterSupport, "Update " + artifact.getAppName(),AppNotification.INSTALL,buildListener,verbose);            
+            appManagementProxy.redeployApplication(artifact.getSourcePath().getAbsolutePath(),artifact.getAppName(),buildDeploymentPreferences(artifact), null);
             
 			while(!notifyListener.hasEventTriggered()) {
 				synchronized (notifyListener) {
@@ -369,9 +376,9 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 				}	
 			}
 
-
-            if(!notifyListener.isSuccessful())
-               throw new DeploymentServiceException("Application not successfully updated: " + notifyListener.getMessage());            
+            if(!notifyListener.isSuccessful()) {
+               throw new DeploymentServiceException("Application not successfully updated: " + notifyListener.getMessage());
+            }
             
         } catch (Exception e) {
             e.printStackTrace();
@@ -379,16 +386,13 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
         }        
 	}    
 
-    public void uninstallArtifact(String appName) throws Exception {
+    public void uninstallArtifact(Artifact artifact) throws Exception {
     	try {
-			Hashtable<Object, Object> prefs = new Hashtable<Object, Object>();
 			NotificationFilterSupport filterSupport = createFilterSupport();
-			
-			DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(),filterSupport,"Uninstall " + appName, AppNotification.UNINSTALL,buildListener,verbose);        
+			DeploymentNotificationListener notifyListener = new DeploymentNotificationListener(getAdminClient(),filterSupport,"Uninstall " + artifact.getAppName(), AppNotification.UNINSTALL,buildListener,verbose);        
 
 			AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());
-			
-			appManagementProxy.uninstallApplication(appName,prefs,null);
+			appManagementProxy.uninstallApplication(artifact.getAppName(),buildDeploymentPreferences(artifact), null);
 			
 			while(!notifyListener.hasEventTriggered()) {
 				synchronized (notifyListener) {
@@ -406,15 +410,15 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 		}
     }
 
-    public void startArtifact(String appName) throws Exception {
-    	startArtifact(appName, 5);
+    public void startArtifact(Artifact artifact) throws Exception {
+    	startArtifact(artifact, 5);
     }
     
-    public void startArtifact(String appName, int deploymentTimeout) throws Exception {
+    public void startArtifact(Artifact artifact, int deploymentTimeout) throws Exception {
 		try {			
 			AppManagement appManagementProxy = AppManagementProxy.getJMXProxyForClient(getAdminClient());	
-			if(waitForApplicationDistribution(appManagementProxy, appName, deploymentTimeout * 60)) {
-				String targetsStarted = appManagementProxy.startApplication(appName, null, null);
+			if(waitForApplicationDistribution(appManagementProxy, artifact, deploymentTimeout * 60)) {
+				String targetsStarted = appManagementProxy.startApplication(artifact.getAppName(), buildDeploymentPreferences(artifact), null);
 				log.info("Application was started on the following targets: "+ targetsStarted);
 				if (targetsStarted == null) {
 					//wait X seconds to let deployment settle
@@ -426,11 +430,11 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			throw new DeploymentServiceException("Could not start artifact '"+ appName + "': " + e.toString());
+			throw new DeploymentServiceException("Could not start artifact '"+ artifact.getAppName() + "': " + e.toString());
 		}
     }
     
-    private boolean waitForApplicationDistribution(AppManagement appManagementProxy,String appName,int secondsToWait) throws Exception {
+    private boolean waitForApplicationDistribution(AppManagement appManagementProxy,Artifact artifact,int secondsToWait) throws Exception {
     	int totalSeconds = 0;
     	NotificationFilterSupport filterSupport = createFilterSupport();
     	DeploymentNotificationListener distributionListener = null;
@@ -441,7 +445,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 			
 			synchronized (distributionListener) {
 				if(!distributionListener.hasEventTriggered()) {
-					appManagementProxy.getDistributionStatus(appName,new Hashtable<Object, Object>(), null);
+					appManagementProxy.getDistributionStatus(artifact.getAppName(),buildDeploymentPreferences(artifact), null);
 					distributionListener.wait();
 				}
 			}	
@@ -449,29 +453,28 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 		return totalSeconds <= secondsToWait;
     }
 
-    public void stopArtifact(String appName) throws Exception {
+    public void stopArtifact(Artifact artifact) throws Exception {
         try {
-            AppManagementProxy.getJMXProxyForClient(getAdminClient()).stopApplication(appName, new Hashtable<Object,Object>(), null);
+            AppManagementProxy.getJMXProxyForClient(getAdminClient()).stopApplication(artifact.getAppName(), buildDeploymentPreferences(artifact), null);
         } catch(Exception e) {
             e.printStackTrace();
-            throw new DeploymentServiceException("Could not stop artifact '"+appName+"': "+e.getMessage());
+            throw new DeploymentServiceException("Could not stop artifact '"+artifact.getAppName()+"': "+e.getMessage());
         }
     }
 
-    public boolean isArtifactInstalled(String name) {
+    public boolean isArtifactInstalled(Artifact artifact) {
         try {
         	AppManagement appManagement = AppManagementProxy.getJMXProxyForClient(getAdminClient());
-            boolean result = appManagement.checkIfAppExists(name, new Hashtable(), null);
-            return result;
+            return appManagement.checkIfAppExists(artifact.getAppName(), buildDeploymentPreferences(artifact), null);
         } catch(AdminException e) {
             e.printStackTrace();
-            throw new DeploymentServiceException("Could not determine if artifact '"+name+"' is installed: AdminException: "+e.getMessage());
+            throw new DeploymentServiceException("Could not determine if artifact '"+artifact.getAppName()+"' is installed: AdminException: "+e.getMessage());
         } catch (ConnectorException e) {
 			e.printStackTrace();
-			throw new DeploymentServiceException("Could not determine if artifact '"+name+"' is installed: ConnectorException: "+e.getMessage());
+			throw new DeploymentServiceException("Could not determine if artifact '"+artifact.getAppName()+"' is installed: ConnectorException: "+e.getMessage());
 		} catch (Exception e) {
 			e.printStackTrace();
-			throw new DeploymentServiceException("Could not determine if artifact '"+name+"' is installed: General Exception: "+e.getMessage());
+			throw new DeploymentServiceException("Could not determine if artifact '"+artifact.getAppName()+"' is installed: General Exception: "+e.getMessage());
 		}
     }
 
@@ -540,9 +543,8 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     private void injectSecurityConfiguration(Properties config) {
     	if(verbose) {
     		org.apache.soap.util.net.SSLUtils.traceEnabled = true;
-    		Call.traceEnabled = true;
     	}
-    	
+    	SSLSocketFactory.getDefault(); //workaround for IBM SSL error
         config.put(AdminClient.CACHE_DISABLED, "true");
         config.put(AdminClient.CONNECTOR_SECURITY_ENABLED, "true");
         config.put(AdminClient.USERNAME, getUsername());

@@ -541,9 +541,9 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
 
     private void injectSecurityConfiguration(Properties config) {
-    	if(verbose) {
-    		org.apache.soap.util.net.SSLUtils.traceEnabled = true;
-    	}
+//    	if(verbose) {
+//    		org.apache.soap.util.net.SSLUtils.traceEnabled = true;
+//    	}
     	SSLSocketFactory.getDefault(); //workaround for IBM SSL error
         config.put(AdminClient.CACHE_DISABLED, "true");
         config.put(AdminClient.CONNECTOR_SECURITY_ENABLED, "true");

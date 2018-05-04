@@ -258,7 +258,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     }
     
     private Hashtable<String,Object> buildDeploymentPreferences(Artifact artifact) throws Exception {
-    	if(artifact.getPreferences() != null) {
+    	if(artifact.getPreferences().size() > 0) {
     		return artifact.getPreferences();
     	}
         Hashtable<String,Object> defaultBindingPreferences = new Hashtable<String,Object>();

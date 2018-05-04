@@ -167,10 +167,10 @@ public class Artifact {
 	}
 
 	public Hashtable<String, Object> getPreferences() {
-		return preferences;
+		return new Hashtable<String, Object>(preferences);
 	}
 
 	public void setPreferences(Hashtable<String, Object> preferences) {
-		this.preferences = preferences;
+		this.preferences = new Hashtable<String,Object>(preferences);
 	}
 }

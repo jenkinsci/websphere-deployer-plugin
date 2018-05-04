@@ -148,7 +148,7 @@
 
     <properties>
     	<jenkins.version>1.608</jenkins.version>
-    	<was.version>9.0</was.version>
+    	<was.version>7.0.0</was.version>
     	<liberty.version>8.5.x.6</liberty.version>
 	</properties>
 

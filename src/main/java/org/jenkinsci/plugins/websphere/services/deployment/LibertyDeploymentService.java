@@ -35,12 +35,12 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
         }
     }
 
-    public void uninstallArtifact(String name) {
+    public void uninstallArtifact(Artifact artifact) {
         try {
             ObjectName fileTransferServiceMBean = new ObjectName("WebSphere:feature=restConnector,type=FileTransfer,name=FileTransfer");
             if (client.isRegistered(fileTransferServiceMBean)) {
                 FileTransferMBean bean = JMX.newMBeanProxy(client, fileTransferServiceMBean, FileTransferMBean.class);
-                bean.deleteFile("${server.output.dir}/dropins/"+name);
+                bean.deleteFile("${server.output.dir}/dropins/"+artifact.getAppName());
             } else {
                 throw new Exception("FileTransfer MBean not registered on WebSphere Liberty Profile");
             }
@@ -49,37 +49,37 @@ public class LibertyDeploymentService extends AbstractDeploymentService {
         }
     }
 
-    public void startArtifact(String name) {
+    public void startArtifact(Artifact artifact) {
         try {
-            ObjectName applicationMBean = new ObjectName("WebSphere:service=com.ibm.websphere.application.ApplicationMBean,name="+name);
+            ObjectName applicationMBean = new ObjectName("WebSphere:service=com.ibm.websphere.application.ApplicationMBean,name="+artifact.getAppName());
             if (client.isRegistered(applicationMBean)) {
                 ApplicationMBean bean = JMX.newMBeanProxy(client, applicationMBean, ApplicationMBean.class);
                 bean.start();
             } else {
-                throw new Exception("Application '"+name+"' is not installed");
+                throw new Exception("Application '"+artifact.getAppName()+"' is not installed");
             }
         } catch(Exception e) {
             throw new DeploymentServiceException("Failed to start artifact: "+e.getMessage());
         }
     }
 
-    public void stopArtifact(String name) {
+    public void stopArtifact(Artifact artifact) {
         try {
-            ObjectName applicationMBean = new ObjectName("WebSphere:service=com.ibm.websphere.application.ApplicationMBean,name="+name);
+            ObjectName applicationMBean = new ObjectName("WebSphere:service=com.ibm.websphere.application.ApplicationMBean,name="+artifact.getAppName());
             if (client.isRegistered(applicationMBean)) {
                 ApplicationMBean bean = JMX.newMBeanProxy(client, applicationMBean, ApplicationMBean.class);
                 bean.stop();
             } else {
-                throw new Exception("Application '"+name+"' is not installed");
+                throw new Exception("Application '"+artifact.getAppName()+"' is not installed");
             }
         } catch(Exception e) {
             throw new DeploymentServiceException("Failed to stop artifact: "+e.getMessage());
         }
     }
 
-    public boolean isArtifactInstalled(String name) {
+    public boolean isArtifactInstalled(Artifact artifact) {
         try {
-            ObjectName applicationMBean = new ObjectName("WebSphere:service=com.ibm.websphere.application.ApplicationMBean,name="+name);
+            ObjectName applicationMBean = new ObjectName("WebSphere:service=com.ibm.websphere.application.ApplicationMBean,name="+artifact.getAppName());
             return client.isRegistered(applicationMBean);
         } catch(Exception e) {
             e.printStackTrace();

@@ -1,14 +1,16 @@
 websphere-deployer-plugin
 =========================
 
-This plugin is designed to deploy to WebSphere Full Profile and WebSphere Liberty Profile.
+This plugin is designed to deploy to WebSphere Full Profile, WebSphere Portal and WebSphere Liberty Profile.
 
-We will support.
-
-<ul>
+<ol>
   <li>Global Security</li>
   <li>WebSphere Liberty Profile</li>
   <li>WebSphere Application Server</li>
-  <li>Different protocols</li>
-  <li>Different platforms</li>
-</ul>
+  <li>WebSphere Portal Server</li>
+  <li>SOAP Connectivity</li>
+  <li>Automatic EAR generation from WAR</li>
+  <li>Cluster Deployments</li>
+  <li>Standalone Server Deployments</li>
+  <li>Single Deployment Manager for multiple environments (DEV,TEST,QA,UAT,PRE-PROD,PROD, etc...)
+</ol>

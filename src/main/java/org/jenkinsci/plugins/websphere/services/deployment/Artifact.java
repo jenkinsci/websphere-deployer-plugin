@@ -1,6 +1,7 @@
 package org.jenkinsci.plugins.websphere.services.deployment;
 
 import java.io.File;
+import java.util.Hashtable;
 
 public class Artifact {
 
@@ -22,6 +23,8 @@ public class Artifact {
     private String classLoaderPolicy;
     private String virtualHost;
     private String sharedLibName;
+    private String edition;
+    private Hashtable<String,Object> preferences;
     
     public String getTypeName() {
     	switch(type) {
@@ -154,4 +157,20 @@ public class Artifact {
 	public void setSharedLibName(String sharedLibName) {
 		this.sharedLibName = sharedLibName;
 	}  		
+	
+	public String getEdition() {
+		return this.edition;
+	}
+	
+	public void setEdition(String edition) {
+		this.edition = edition;
+	}
+
+	public Hashtable<String, Object> getPreferences() {
+		return new Hashtable<String, Object>(preferences);
+	}
+
+	public void setPreferences(Hashtable<String, Object> preferences) {
+		this.preferences = new Hashtable<String,Object>(preferences);
+	}
 }

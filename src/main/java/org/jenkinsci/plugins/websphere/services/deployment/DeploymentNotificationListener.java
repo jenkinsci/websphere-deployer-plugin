@@ -26,6 +26,7 @@ public class DeploymentNotificationListener implements NotificationListener
    private Properties notificationProps = new Properties();
    private BuildListener listener;
    private boolean verbose;
+   private boolean eventTriggered;
 
    public DeploymentNotificationListener(AdminClient adminClient, NotificationFilterSupport support, Object handBack, String eventTypeToCheck,BuildListener listener,boolean verbose) throws Exception {
       super();
@@ -38,8 +39,7 @@ public class DeploymentNotificationListener implements NotificationListener
       adminClient.addNotificationListener(objectName, this, filterSupport, handBack);
    }
 
-   public void handleNotification(Notification notification, Object handback)
-   {
+   public void handleNotification(Notification notification, Object handback) {
       AppNotification appNotification = (AppNotification) notification.getUserData();
       if(verbose) {
     	  listener.getLogger().println(appNotification.taskName+"] "+appNotification.message+"["+appNotification.taskStatus+"]");
@@ -54,12 +54,18 @@ public class DeploymentNotificationListener implements NotificationListener
 					notificationProps = appNotification.props;
 				}
 
-				synchronized (this) {
-					notifyAll();
+				synchronized(this) {
+					eventTriggered = true;
+					this.notify();
 				}
 			} catch (Exception e) {
+				e.printStackTrace();
 			}
       }
+   }
+   
+   public boolean hasEventTriggered() {
+	   return eventTriggered;
    }
 
 	public String getMessage() {

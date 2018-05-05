@@ -6,10 +6,10 @@ public interface DeploymentService {
 
     void installArtifact(Artifact artifact);
     void updateArtifact(Artifact artifact);
-    void uninstallArtifact(String name) throws Exception;
-    void startArtifact(String name) throws Exception;
-    void stopArtifact(String name) throws Exception;
-    boolean isArtifactInstalled(String name);
+    void uninstallArtifact(Artifact artifact) throws Exception;
+    void startArtifact(Artifact artifact) throws Exception;
+    void stopArtifact(Artifact artifact) throws Exception;
+    boolean isArtifactInstalled(Artifact artifact);
     void setTrustStoreLocation(File location);
     void setKeyStoreLocation(File location);
     void setTrustStorePassword(String password);

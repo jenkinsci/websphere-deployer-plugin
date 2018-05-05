@@ -14,6 +14,7 @@ import hudson.tasks.Publisher;
 import hudson.util.FormValidation;
 import hudson.util.Scrambler;
 import net.sf.json.JSONObject;
+
 import org.jenkinsci.plugins.websphere.services.deployment.Artifact;
 import org.jenkinsci.plugins.websphere.services.deployment.LibertyDeploymentService;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -21,10 +22,14 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
 import javax.servlet.ServletException;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
+import java.nio.channels.IllegalSelectorException;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 
 /**
@@ -87,25 +92,38 @@ public class LibertyDeployerPlugin extends Notifier {
 
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
-
-        if(build.getResult().equals(Result.SUCCESS)) {
+    	Result buildResult = build.getResult();
+    	if(buildResult == null) {
+    		listener.getLogger().println("Error deploying to IBM WebSphere Liberty Profile: Build result is null");
+    		throw new IllegalStateException("Build result is null");
+    	}
+        if(buildResult.equals(Result.SUCCESS)) {
             LibertyDeploymentService service = new LibertyDeploymentService();
             try {
                 connect(listener,service);
                 for(FilePath path:gatherArtifactPaths(build, listener)) {
                     Artifact artifact = createArtifact(path,listener);
-                    stopArtifact(artifact.getAppName(),listener,service);
-                    uninstallArtifact(artifact.getAppName(),listener,service);
+                    stopArtifact(artifact,listener,service);
+                    uninstallArtifact(artifact,listener,service);
                     deployArtifact(artifact,listener,service);
                     Thread.sleep(2000); //wait 2 seconds for deployment to settle
-                    startArtifact(artifact.getAppName(),listener,service);
+                    startArtifact(artifact,listener,service);
                 }
             } catch (Exception e) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
-                PrintStream p = new PrintStream(out);
-                e.printStackTrace(p);
-                listener.getLogger().println("Error deploying to IBM WebSphere Liberty Profile: "+new String(out.toByteArray()));
-                build.setResult(Result.FAILURE);
+                PrintStream p = null;
+				try {
+					p = new PrintStream(out,true,"UTF-8");
+	                e.printStackTrace(p);
+	                listener.getLogger().println("Error deploying to IBM WebSphere Liberty Profile: "+new String(out.toByteArray(),"UTF-8"));
+	                build.setResult(Result.FAILURE);
+				} catch (UnsupportedEncodingException e1) {
+					e1.printStackTrace();
+				} finally {
+					if(p != null) {
+						p.close();
+					}
+				}
             } finally {
                 try {
                     disconnect(listener,service);
@@ -149,17 +167,17 @@ public class LibertyDeployerPlugin extends Notifier {
         service.disconnect();
     }
 
-    private void stopArtifact(String appName,BuildListener listener,LibertyDeploymentService service) throws Exception {
-        if(service.isArtifactInstalled(appName)) {
-            listener.getLogger().println("Stopping Old Application '"+appName+"'...");
-            service.stopArtifact(appName);
+    private void stopArtifact(Artifact artifact,BuildListener listener,LibertyDeploymentService service) throws Exception {
+        if(service.isArtifactInstalled(artifact)) {
+            listener.getLogger().println("Stopping Old Application '"+artifact+"'...");
+            service.stopArtifact(artifact);
         }
     }
 
-    private void uninstallArtifact(String appName,BuildListener listener,LibertyDeploymentService service) throws Exception {
-        if(service.isArtifactInstalled(appName)) {
-            listener.getLogger().println("Uninstalling Old Application '"+appName+"'...");
-            service.uninstallArtifact(appName);
+    private void uninstallArtifact(Artifact artifact,BuildListener listener,LibertyDeploymentService service) throws Exception {
+        if(service.isArtifactInstalled(artifact)) {
+            listener.getLogger().println("Uninstalling Old Application '"+artifact.getAppName()+"'...");
+            service.uninstallArtifact(artifact);
         }
     }
 
@@ -168,15 +186,25 @@ public class LibertyDeployerPlugin extends Notifier {
         service.installArtifact(artifact);
     }
 
-    private void startArtifact(String appName,BuildListener listener,LibertyDeploymentService service) throws Exception {
-        listener.getLogger().println("Starting Application '"+appName+"'...");
-        service.startArtifact(appName);
+    private void startArtifact(Artifact artifact,BuildListener listener,LibertyDeploymentService service) throws Exception {
+        listener.getLogger().println("Starting Application '"+artifact.getAppName()+"'...");
+        service.startArtifact(artifact);
     }
 
     private FilePath[] gatherArtifactPaths(AbstractBuild build,BuildListener listener) throws Exception {
-        FilePath[] paths = build.getWorkspace().getParent().list(getArtifacts());
+    	FilePath workspace = build.getWorkspace();
+    	if(workspace == null) {
+    		listener.getLogger().println("Failed to gather artifact paths: Build workspace is null");
+    		throw new IllegalStateException("Failed to gather artifact paths: Build workspace is null");
+    	}
+    	FilePath workspaceParent = workspace.getParent();
+    	if(workspaceParent == null) {
+    		listener.getLogger().println("Failed to gather artifact paths: Build workspace's parent path is null");
+    		throw new IllegalStateException("Failed to gather artifact paths: Build workspace's parent path is null");
+    	}
+        FilePath[] paths = workspaceParent.list(getArtifacts());
         if(paths.length == 0) {
-            listener.getLogger().println("No deployable artifacts found in path: "+build.getWorkspace().getParent()+ File.separator+getArtifacts());
+            listener.getLogger().println("No deployable artifacts found in path: "+workspaceParent+ File.separator+getArtifacts());
             throw new Exception("No deployable artifacts found!");
         } else {
             listener.getLogger().println("The following artifacts will be deployed in this order...");
@@ -231,9 +259,9 @@ public class LibertyDeployerPlugin extends Notifier {
                 return FormValidation.ok("Connection Successful!");
             } catch (Exception e) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
-                PrintStream p = new PrintStream(out);
+                PrintStream p = new PrintStream(out,true,"UTF-8");
                 e.printStackTrace(p);
-                return FormValidation.error("Connection failed: " + new String(out.toByteArray()));
+                return FormValidation.error("Connection failed: " + new String(out.toByteArray(),"UTF-8"));
             } finally {
                 service.disconnect();
             }

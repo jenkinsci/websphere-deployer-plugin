@@ -1,4 +1,4 @@
-websphere-deployer-plugin
+Websphere Deployer Plugin (For Jenkins)
 =========================
 
 This plugin is designed to deploy to WebSphere Full Profile, WebSphere Portal and WebSphere Liberty Profile.
@@ -12,5 +12,6 @@ This plugin is designed to deploy to WebSphere Full Profile, WebSphere Portal an
   <li>Automatic EAR generation from WAR</li>
   <li>Cluster Deployments</li>
   <li>Standalone Server Deployments</li>
-  <li>Single Deployment Manager for multiple environments (DEV,TEST,QA,UAT,PRE-PROD,PROD, etc...)
+  <li>Single Deployment Manager for multiple environments (DEV,TEST,QA,UAT,PRE-PROD,PROD, etc...)</li>
+  <li>Full synchronization on cluster deployments</li>
 </ol>

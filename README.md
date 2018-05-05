@@ -1,6 +1,8 @@
 Websphere Deployer Plugin (For Jenkins)
 =========================
 
+Details on this plugin can be found here: https://wiki.jenkins-ci.org/display/JENKINS/WebSphere+Deployer+Plugin
+
 This plugin is designed to deploy to WebSphere Full Profile, WebSphere Portal and WebSphere Liberty Profile.
 
 <ol>

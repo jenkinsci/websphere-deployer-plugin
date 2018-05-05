@@ -642,6 +642,22 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
 		}
 		return distributionState;
     }
+	
+    /**
+     * Fully resynchronizes all nodes.
+     */
+    public void fullResynchronizeNodes() {
+        try {
+            ObjectName serverObject = new ObjectName("WebSphere:type=NodeSync,*");
+            Set<ObjectName> nodes = client.queryNames(serverObject, null);
+            for (ObjectName node : nodes) {
+                client.invoke(node, "sync", new Object[] {}, new String[] {});
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new DeploymentServiceException(e.getMessage(), e);
+        }
+    }
 
 	public void setTrustAll(boolean trustAll) {
 		this.trustAll = trustAll;

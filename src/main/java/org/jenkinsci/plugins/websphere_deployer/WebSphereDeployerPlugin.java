@@ -60,6 +60,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final String virtualHost;
     private final String sharedLibName;
     private final String edition;
+    private final boolean fullSynchronization;
     private final boolean precompile;
     private final boolean reloading;
     private final boolean jspReloading;
@@ -85,6 +86,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    String virtualHost,
                                    String sharedLibName,
                                    String edition,
+                                   boolean fullSynchronization,
                                    boolean precompile,
                                    boolean reloading,
                                    boolean jspReloading,
@@ -105,6 +107,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.earLevel = earLevel;
         this.deploymentTimeout = deploymentTimeout;
         this.edition = edition;
+        this.fullSynchronization = fullSynchronization;
         this.precompile = precompile;
         this.reloading = reloading;
         this.jspReloading = jspReloading;
@@ -150,6 +153,10 @@ public class WebSphereDeployerPlugin extends Notifier {
     
     public boolean isDistribute() {
     	return distribute;
+    }
+    
+    public boolean isFullSynchronization() {
+    	return fullSynchronization;
     }
     
     public boolean isPrecompile() {
@@ -246,8 +253,9 @@ public class WebSphereDeployerPlugin extends Notifier {
                     		updateArtifact(artifact,listener,service);
                     	}
                     }
-
-                    service.fullResynchronizeNodes();
+                    if(isFullSynchronization()) {
+                    	service.fullyResynchronizeNodes();
+                    }
                     startArtifact(artifact,listener,service);
 
                     if(rollback) {

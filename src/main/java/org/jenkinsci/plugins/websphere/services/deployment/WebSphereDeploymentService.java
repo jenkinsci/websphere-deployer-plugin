@@ -646,7 +646,7 @@ public class WebSphereDeploymentService extends AbstractDeploymentService {
     /**
      * Fully resynchronizes all nodes.
      */
-    public void fullResynchronizeNodes() {
+    public void fullyResynchronizeNodes() {
         try {
             ObjectName serverObject = new ObjectName("WebSphere:type=NodeSync,*");
             Set<ObjectName> nodes = client.queryNames(serverObject, null);

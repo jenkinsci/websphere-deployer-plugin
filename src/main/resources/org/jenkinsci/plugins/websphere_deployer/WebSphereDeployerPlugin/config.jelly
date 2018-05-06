@@ -128,7 +128,10 @@
           </f:entry>
           <f:entry title="Distribute Application" field="distribute">
             <f:checkbox checked="${instance.distribute}" default="true"/>
-          </f:entry>                    
+          </f:entry> 
+          <f:entry title="Issue Full Synchronization" field="fullSynchronization">
+            <f:checkbox checked="${instance.fullSynchronization}" default="false"/>
+          </f:entry>                   
           <f:entry title="Precompile JSPs" field="precompile">
             <f:checkbox checked="${instance.precompile}" default="true"/>
           </f:entry>

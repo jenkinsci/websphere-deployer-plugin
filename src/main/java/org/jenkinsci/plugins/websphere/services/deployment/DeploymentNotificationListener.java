@@ -3,7 +3,6 @@ package org.jenkinsci.plugins.websphere.services.deployment;
 import hudson.model.BuildListener;
 
 import java.util.Properties;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.management.Notification;

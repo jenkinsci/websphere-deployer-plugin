@@ -16,4 +16,5 @@ This plugin is designed to deploy to WebSphere Full Profile, WebSphere Portal an
   <li>Standalone Server Deployments</li>
   <li>Single Deployment Manager for multiple environments (DEV,TEST,QA,UAT,PRE-PROD,PROD, etc...)</li>
   <li>Full synchronization on cluster deployments</li>
+  <li>Automated rollback on deployment or startup errors</li>
 </ol>

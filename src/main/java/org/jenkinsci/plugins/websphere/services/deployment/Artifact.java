@@ -167,6 +167,9 @@ public class Artifact {
 	}
 
 	public Hashtable<String, Object> getPreferences() {
+		if(preferences == null) {
+			return new Hashtable<String, Object>();
+		}
 		return new Hashtable<String, Object>(preferences);
 	}
 

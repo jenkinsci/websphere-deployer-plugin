@@ -239,8 +239,8 @@ public class WebSphereDeployerPlugin extends Notifier {
                 EnvVars env = build.getEnvironment(listener);
                 preInitializeService(listener,service, env);  
             	service.connect();                	               
-                for(FilePath path:gatherArtifactPaths(build, listener)) {
-                    artifact = createArtifact(path,listener,service);   
+                for(FilePath path:gatherArtifactPaths(build, listener, env)) {
+                    artifact = createArtifact(env,path,listener,service);   
                     log(listener,"Artifact is being deployed to virtual host: "+artifact.getVirtualHost());
                     stopArtifact(artifact,listener,service);
                     if(getOperations().equals(OPERATION_REINSTALL)) {
@@ -419,7 +419,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         }
     }      
 
-    private Artifact createArtifact(FilePath path,BuildListener listener,WebSphereDeploymentService service) {
+    private Artifact createArtifact(EnvVars env, FilePath path,BuildListener listener,WebSphereDeploymentService service) {
         Artifact artifact = new Artifact();
         if(path.getRemote().endsWith(".ear")) {
             artifact.setType(Artifact.TYPE_EAR);
@@ -427,26 +427,26 @@ public class WebSphereDeployerPlugin extends Notifier {
             artifact.setType(Artifact.TYPE_WAR);
         }
         if(StringUtils.trimToNull(context) != null) {
-        	artifact.setContext(context);
+        	artifact.setContext(env.expand(context));
         }                
         if(StringUtils.trimToNull(virtualHost) == null) {
         	artifact.setVirtualHost("default_host");
         } else {
-        	artifact.setVirtualHost(virtualHost);
+        	artifact.setVirtualHost(env.expand(virtualHost));
         }
-        artifact.setClassLoaderOrder(classLoaderOrder);
-        artifact.setClassLoaderPolicy(classLoaderPolicy);
-        artifact.setTargets(targets);
-        artifact.setInstallPath(installPath);
+        artifact.setClassLoaderOrder(env.expand(classLoaderOrder));
+        artifact.setClassLoaderPolicy(env.expand(classLoaderPolicy));
+        artifact.setTargets(env.expand(targets));
+        artifact.setInstallPath(env.expand(installPath));
         artifact.setJspReloading(reloading);
         artifact.setDistribute(distribute);
         if(StringUtils.trimToNull(edition) != null) {
-        	artifact.setEdition(edition);	
+        	artifact.setEdition(env.expand(edition));	
         }
         artifact.setPrecompile(isPrecompile());
         artifact.setSourcePath(new File(path.getRemote()));
         if(StringUtils.trimToNull(applicationName) != null) {
-        	artifact.setAppName(applicationName);
+        	artifact.setAppName(env.expand(applicationName));
         } else {
         	artifact.setAppName(getAppName(artifact,service));
         }
@@ -456,7 +456,8 @@ public class WebSphereDeployerPlugin extends Notifier {
         return artifact;
     }
 
-    private FilePath[] gatherArtifactPaths(AbstractBuild build,BuildListener listener) throws Exception {
+
+	private FilePath[] gatherArtifactPaths(AbstractBuild build,BuildListener listener,EnvVars env) throws Exception {
     	if(build == null) {
     		log(listener,"Cannot gather artifact paths: Build is null");
     		throw new IllegalStateException("Cannot gather artifact paths: Build is null");
@@ -476,7 +477,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     		log(listener,"Cannot gather artifact paths: Artifacts are null");
     		throw new IllegalStateException("Cannot gather artifact paths: Artifacts are null");
     	}
-        FilePath[] paths = workspaceParent.list(artifacts);
+        FilePath[] paths = workspaceParent.list(env.expand(artifacts));
         if(paths.length == 0) {
             listener.getLogger().println("No deployable artifacts found in path: "+workspaceParent+File.separator+artifacts);
             throw new Exception("No deployable artifacts found!");
@@ -495,7 +496,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private void preInitializeService(BuildListener listener,WebSphereDeploymentService service,EnvVars env) throws Exception {
         listener.getLogger().println("Connecting to IBM WebSphere Application Server...");
         service.setVerbose(isVerbose());
-        service.setBuildListener(listener);;
+        service.setBuildListener(listener);
         service.setConnectorType(getConnectorType());
         service.setHost(env.expand(getIpAddress()));
         service.setPort(env.expand(getPort()));

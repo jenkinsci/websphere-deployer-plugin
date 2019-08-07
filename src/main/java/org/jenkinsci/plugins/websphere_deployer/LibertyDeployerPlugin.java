@@ -1,5 +1,6 @@
 package org.jenkinsci.plugins.websphere_deployer;
 
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
@@ -100,8 +101,9 @@ public class LibertyDeployerPlugin extends Notifier {
         if(buildResult.equals(Result.SUCCESS)) {
             LibertyDeploymentService service = new LibertyDeploymentService();
             try {
-                connect(listener,service);
-                for(FilePath path:gatherArtifactPaths(build, listener)) {
+                EnvVars env = build.getEnvironment(listener);
+                connect(listener,service,env);
+                for(FilePath path:gatherArtifactPaths(build, listener,env)) {
                     Artifact artifact = createArtifact(path,listener);
                     stopArtifact(artifact,listener,service);
                     uninstallArtifact(artifact,listener,service);
@@ -151,14 +153,14 @@ public class LibertyDeployerPlugin extends Notifier {
         return artifact;
     }
 
-    private void connect(BuildListener listener,LibertyDeploymentService service) throws Exception {
+    private void connect(BuildListener listener,LibertyDeploymentService service,EnvVars env) throws Exception {
         listener.getLogger().println("Connecting to IBM WebSphere Liberty Profile...");
-        service.setHost(getIpAddress());
-        service.setPort(getPort());
-        service.setUsername(getUsername());
-        service.setPassword(getConsolePassword());
-        service.setTrustStoreLocation(new File(getClientTrustFile()));
-        service.setTrustStorePassword(getClientTrustPassword());
+        service.setHost(env.expand(getIpAddress()));
+        service.setPort(env.expand(getPort()));
+        service.setUsername(env.expand(getUsername()));
+        service.setPassword(env.expand(getConsolePassword()));
+        service.setTrustStoreLocation(new File(env.expand(getClientTrustFile())));
+        service.setTrustStorePassword(env.expand(getClientTrustPassword()));
         service.connect();
     }
 
@@ -191,7 +193,7 @@ public class LibertyDeployerPlugin extends Notifier {
         service.startArtifact(artifact);
     }
 
-    private FilePath[] gatherArtifactPaths(AbstractBuild build,BuildListener listener) throws Exception {
+    private FilePath[] gatherArtifactPaths(AbstractBuild build,BuildListener listener, EnvVars env) throws Exception {
     	FilePath workspace = build.getWorkspace();
     	if(workspace == null) {
     		listener.getLogger().println("Failed to gather artifact paths: Build workspace is null");
@@ -202,7 +204,7 @@ public class LibertyDeployerPlugin extends Notifier {
     		listener.getLogger().println("Failed to gather artifact paths: Build workspace's parent path is null");
     		throw new IllegalStateException("Failed to gather artifact paths: Build workspace's parent path is null");
     	}
-        FilePath[] paths = workspaceParent.list(getArtifacts());
+        FilePath[] paths = workspaceParent.list(env.expand(getArtifacts()));
         if(paths.length == 0) {
             listener.getLogger().println("No deployable artifacts found in path: "+workspaceParent+ File.separator+getArtifacts());
             throw new Exception("No deployable artifacts found!");

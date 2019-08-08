@@ -453,6 +453,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         if(artifact.getType() == Artifact.TYPE_WAR) {
             generateEAR(artifact, listener, service);
         }
+        artifact.setSharedLibName(env.expand(sharedLibName));
         return artifact;
     }
 

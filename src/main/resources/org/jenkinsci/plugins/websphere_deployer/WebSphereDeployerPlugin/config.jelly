@@ -57,7 +57,10 @@
                     </j:when>              
                 </j:choose>
             </select>
-          </f:entry>  
+          </f:entry>
+          <f:entry title="Do Not Start Application After Install" field="dontStart">
+            <f:checkbox checked="${instance.start}" default="false"/>
+          </f:entry>
           <f:entry title="Rollback On Error" field="rollback">
             <f:checkbox checked="${instance.rollback}" default="false"/>
           </f:entry>

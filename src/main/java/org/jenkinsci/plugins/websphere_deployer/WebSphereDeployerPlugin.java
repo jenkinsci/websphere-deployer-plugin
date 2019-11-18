@@ -68,6 +68,7 @@ public class WebSphereDeployerPlugin extends Notifier {
     private final boolean distribute;
     private final boolean rollback;
     private final boolean unstableDeploy;
+    private final boolean doNotStart;
     private final WebSphereSecurity security;
 
     @DataBoundConstructor
@@ -94,6 +95,7 @@ public class WebSphereDeployerPlugin extends Notifier {
                                    boolean distribute,
                                    boolean rollback,
                                    boolean unstableDeploy,
+                                   boolean doNotStart,
                                    String classLoaderPolicy,
                                    String classLoaderOrder) {
     	this.context = context;
@@ -115,6 +117,7 @@ public class WebSphereDeployerPlugin extends Notifier {
         this.distribute = distribute;
         this.rollback = rollback;
         this.unstableDeploy = unstableDeploy;
+        this.doNotStart = doNotStart;
         this.security = security;
         this.classLoaderPolicy = classLoaderPolicy;
         this.classLoaderOrder = classLoaderOrder;
@@ -182,6 +185,8 @@ public class WebSphereDeployerPlugin extends Notifier {
     public boolean isUnstableDeploy() {
         return unstableDeploy;
     }
+
+    public boolean isDoNotStart() { return doNotStart;}
 
     public String getIpAddress() {
         return ipAddress;
@@ -256,7 +261,9 @@ public class WebSphereDeployerPlugin extends Notifier {
                     if(isFullSynchronization()) {
                     	service.fullyResynchronizeNodes();
                     }
-                    startArtifact(artifact,listener,service);
+                    if (!isDoNotStart()) {
+                        startArtifact(artifact, listener, service);
+                    }
 
                     if(rollback) {
                     	saveArtifactToRollbackRepository(build, listener, artifact);
